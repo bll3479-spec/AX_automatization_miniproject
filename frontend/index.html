@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>이메일 자동 분류</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <h1>📬 이메일 자동 카테고리 분류</h1>
+    <div class="controls">
+      <select id="source-select">
+        <option value="demo">데모 데이터</option>
+        <option value="gmail">실제 Gmail</option>
+      </select>
+      <label class="apply-labels-toggle">
+        <input type="checkbox" id="apply-labels-checkbox" />
+        Gmail에 라벨 적용
+      </label>
+      <button id="refresh-btn">분류 실행</button>
+    </div>
+  </header>
+
+  <section id="summary" class="summary"></section>
+
+  <nav id="category-tabs" class="tabs"></nav>
+
+  <main id="email-list" class="email-list"></main>
+
+  <p id="error-banner" class="error-banner" hidden></p>
+
+  <script src="/app.js"></script>
+</body>
+</html>
