@@ -84,3 +84,63 @@ def _wait_until_label_usable(service, label_id: str, attempts: int = 5, delay: f
 - 근본적으로 더 안전하게 하려면 `apply_label` 실패 시 호출자(`main.py`)가
   부분 실패를 사용자에게 알리는 처리도 고려할 수 있으나, 현재는 예외를 그대로
   올려 FastAPI 기본 500 응답으로 노출된다 (추후 보완 후보).
+
+---
+
+## 2026-06-29 — 조회 건수 드롭다운을 바꿔도 적용되지 않음
+
+### 증상
+
+화면 상단에 조회 건수(20/50/100/500/전체) 드롭다운을 추가했는데, 사용자가
+값을 바꿔도 실제 조회 결과에는 반영되지 않는 것처럼 보였다.
+
+### 원인 분석
+
+Playwright로 실제 전송되는 `/api/classify` 요청 바디를 가로채 확인해보니,
+**"분류 실행" 버튼을 클릭했을 때는** `limit` 값이 정상적으로 바뀌어 전송되고
+있었다 (`{"limit":20}` → 버튼 클릭 후 `{"limit":null}` 등). 즉 백엔드 연동
+자체는 문제가 없었다.
+
+진짜 원인은 `frontend/app.js` 하단의 이벤트 리스너 등록부에 있었다.
+`source-select`는 `change` 시 라벨 적용 체크박스 상태만 갱신할 뿐 재조회를
+하지 않고, `limit-select`에는 아예 `change` 리스너가 없었다 — 두 컨트롤
+모두 값을 바꾸는 것만으로는 아무 일도 일어나지 않고, 오직 `refresh-btn`의
+`click` 이벤트만 `runClassify()`를 호출하도록 되어 있었다.
+
+```js
+sourceSelect.addEventListener("change", () => { ... }); // 재조회 없음
+refreshBtn.addEventListener("click", runClassify);        // 버튼을 눌러야만 재조회
+```
+
+즉 드롭다운에서 "전체"를 선택한 것만으로는 아무 요청도 나가지 않고, 그
+직후에 "분류 실행"을 눌러야만 비로소 반영되는 구조였다 — 사용자 입장에서는
+"드롭다운이 있는데 적용이 안 된다"로 보일 수밖에 없었다.
+
+(부가적으로, 데모 데이터는 샘플이 12건뿐이라 어떤 값을 선택해도 항상 12건이
+나오므로 데모 모드로 테스트하면 더더욱 "적용 안 됨"처럼 보인다.)
+
+### 수정
+
+`frontend/app.js`에 `limit-select`의 `change` 이벤트에서 바로
+`runClassify()`를 호출하도록 추가했다.
+
+```js
+limitSelect.addEventListener("change", runClassify);
+```
+
+### 검증
+
+- Playwright로 버튼 클릭 없이 `#limit-select`만 `"all"`로 바꾼 뒤
+  `/api/classify` 요청이 자동으로 발생하는지 확인 — 변경 전엔 요청이 전혀
+  나가지 않았고, 변경 후엔 `{"source":"demo","limit":null,...}` 요청이 즉시
+  발생함을 확인.
+- `cd backend && pytest -q` — 기존 7개 테스트 모두 통과(백엔드 비변경).
+- 커밋: `조회 건수 드롭다운 선택 시 분류 실행 버튼 없이 즉시 재조회되도록 수정`
+  (브랜치 `claude/email-auto-categorization-ccab9j`).
+
+### 참고
+
+- `source-select`는 의도적으로 그대로 두었다(소스 전환 시 라벨 적용 체크박스
+  상태를 같이 바꿔야 해서, 자동 재조회를 붙이면 의도치 않게 Gmail 라벨이
+  적용된 상태로 곧바로 분류가 실행될 수 있음). 소스 전환은 여전히 "분류
+  실행" 버튼을 눌러야 한다.
