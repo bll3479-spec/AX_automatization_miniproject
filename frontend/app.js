@@ -1,9 +1,60 @@
+const PAGE_SIZE = 20;
+
 const state = {
   categories: [],
   emails: [],
   counts: {},
   activeCategory: null,
+  pageByKey: {},
 };
+
+function getPage(key, totalItems) {
+  const totalPages = Math.max(1, Math.ceil(totalItems / PAGE_SIZE));
+  const page = Math.min(state.pageByKey[key] || 1, totalPages);
+  return { page, totalPages };
+}
+
+function setPage(key, page) {
+  state.pageByKey[key] = page;
+  render();
+}
+
+function paginate(items, key) {
+  const { page, totalPages } = getPage(key, items.length);
+  const start = (page - 1) * PAGE_SIZE;
+  return { pageItems: items.slice(start, start + PAGE_SIZE), page, totalPages };
+}
+
+function renderPager(key, totalPages, currentPage) {
+  if (totalPages <= 1) return null;
+
+  const pager = document.createElement("div");
+  pager.className = "pager";
+
+  const prev = document.createElement("button");
+  prev.className = "pager-btn";
+  prev.textContent = "이전";
+  prev.disabled = currentPage === 1;
+  prev.onclick = () => setPage(key, currentPage - 1);
+  pager.appendChild(prev);
+
+  for (let p = 1; p <= totalPages; p++) {
+    const btn = document.createElement("button");
+    btn.className = "pager-btn" + (p === currentPage ? " active" : "");
+    btn.textContent = String(p);
+    btn.onclick = () => setPage(key, p);
+    pager.appendChild(btn);
+  }
+
+  const next = document.createElement("button");
+  next.className = "pager-btn";
+  next.textContent = "다음";
+  next.disabled = currentPage === totalPages;
+  next.onclick = () => setPage(key, currentPage + 1);
+  pager.appendChild(next);
+
+  return pager;
+}
 
 const sourceSelect = document.getElementById("source-select");
 const limitSelect = document.getElementById("limit-select");
@@ -125,9 +176,12 @@ function renderMainSection(cat) {
     empty.textContent = "표시할 이메일이 없습니다.";
     section.appendChild(empty);
   } else {
-    for (const item of items) {
+    const { pageItems, page, totalPages } = paginate(items, cat.id);
+    for (const item of pageItems) {
       section.appendChild(renderCard(item));
     }
+    const pager = renderPager(cat.id, totalPages, page);
+    if (pager) section.appendChild(pager);
   }
   return section;
 }
@@ -141,11 +195,11 @@ function renderMinorSummary(minorCats) {
   title.textContent = "기타 알림";
   wrap.appendChild(title);
 
-  const items = state.emails.filter((item) =>
+  const totalCount = state.emails.filter((item) =>
     minorCats.some((c) => c.id === item.result.category)
-  );
+  ).length;
 
-  if (items.length === 0) {
+  if (totalCount === 0) {
     const empty = document.createElement("p");
     empty.className = "empty-state";
     empty.textContent = "표시할 이메일이 없습니다.";
@@ -153,10 +207,30 @@ function renderMinorSummary(minorCats) {
     return wrap;
   }
 
-  for (const item of items) {
-    wrap.appendChild(renderMinorRow(item));
+  for (const cat of minorCats) {
+    wrap.appendChild(renderMinorCategoryGroup(cat));
   }
   return wrap;
+}
+
+function renderMinorCategoryGroup(cat) {
+  const items = state.emails.filter((item) => item.result.category === cat.id);
+  const group = document.createElement("div");
+  group.className = "minor-group";
+  if (items.length === 0) return group;
+
+  const header = document.createElement("div");
+  header.className = "minor-group-header";
+  header.innerHTML = `<span style="color:${cat.color}">${escapeHtml(cat.label_ko)}</span><span class="minor-group-count">${items.length}건</span>`;
+  group.appendChild(header);
+
+  const { pageItems, page, totalPages } = paginate(items, cat.id);
+  for (const item of pageItems) {
+    group.appendChild(renderMinorRow(item));
+  }
+  const pager = renderPager(cat.id, totalPages, page);
+  if (pager) group.appendChild(pager);
+  return group;
 }
 
 function renderMinorRow(item) {
@@ -206,9 +280,13 @@ function renderList() {
     return;
   }
 
-  for (const item of visible) {
+  const key = state.activeCategory ?? "_all";
+  const { pageItems, page, totalPages } = paginate(visible, key);
+  for (const item of pageItems) {
     listEl.appendChild(renderCard(item));
   }
+  const pager = renderPager(key, totalPages, page);
+  if (pager) listEl.appendChild(pager);
 }
 
 function renderCard(item) {
@@ -294,6 +372,7 @@ async function runClassify() {
     const data = await res.json();
     state.emails = data.emails;
     state.counts = data.counts;
+    state.pageByKey = {};
     renderSummary();
     render();
   } catch (err) {

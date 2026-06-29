@@ -277,6 +277,55 @@ select, button {
   padding: 40px;
 }
 
+.pager {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+  justify-content: center;
+}
+
+.pager-btn {
+  font-size: 0.75rem;
+  padding: 4px 10px;
+  border-radius: 6px;
+  border: 1px solid #d1d5db;
+  background: white;
+  cursor: pointer;
+}
+
+.pager-btn.active {
+  background: #1f2937;
+  color: white;
+  border-color: #1f2937;
+}
+
+.pager-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.minor-group {
+  margin-bottom: 12px;
+}
+
+.minor-group:last-child {
+  margin-bottom: 0;
+}
+
+.minor-group-header {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 4px 0;
+}
+
+.minor-group-count {
+  color: #9ca3af;
+  font-weight: 600;
+}
+
 .error-banner {
   margin: 16px 28px;
   padding: 12px 16px;
