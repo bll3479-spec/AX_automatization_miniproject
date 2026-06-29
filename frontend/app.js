@@ -311,6 +311,8 @@ sourceSelect.addEventListener("change", () => {
   }
 });
 
+limitSelect.addEventListener("change", runClassify);
+
 refreshBtn.addEventListener("click", runClassify);
 
 (async function init() {
