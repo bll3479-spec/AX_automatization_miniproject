@@ -6,6 +6,7 @@ const state = {
 };
 
 const sourceSelect = document.getElementById("source-select");
+const limitSelect = document.getElementById("limit-select");
 const applyLabelsCheckbox = document.getElementById("apply-labels-checkbox");
 const refreshBtn = document.getElementById("refresh-btn");
 const summaryEl = document.getElementById("summary");
@@ -282,7 +283,7 @@ async function runClassify() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         source: sourceSelect.value,
-        limit: 20,
+        limit: limitSelect.value === "all" ? null : Number(limitSelect.value),
         apply_labels: applyLabelsCheckbox.checked,
       }),
     });

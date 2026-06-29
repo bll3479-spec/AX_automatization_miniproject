@@ -57,7 +57,7 @@ class CategoryInfo(BaseModel):
 
 class ClassifyRequest(BaseModel):
     source: str = "demo"  # "demo" | "gmail"
-    limit: int = 20
+    limit: int | None = 20  # None이면 전체(안전 상한까지)
     apply_labels: bool = False
 
 

@@ -66,15 +66,39 @@ def _parse_message(raw: dict) -> EmailMessage:
     )
 
 
-def fetch_recent_emails(max_results: int = 20) -> list[EmailMessage]:
+# Gmail API 한 번 호출(list)당 최대 허용치. 이를 넘으면 nextPageToken으로 페이지를 더 가져온다.
+_LIST_PAGE_SIZE = 500
+
+# max_results=None("전체")일 때 무한정 호출을 막기 위한 안전 상한.
+_ALL_MAIL_SAFETY_CAP = 2000
+
+
+def fetch_recent_emails(max_results: int | None = 20) -> list[EmailMessage]:
+    """max_results=None 이면 받은편지함 전체(안전 상한까지)를 페이지네이션으로 가져온다."""
     service = _get_service()
-    response = (
-        service.users()
-        .messages()
-        .list(userId="me", maxResults=max_results, labelIds=["INBOX"])
-        .execute()
-    )
-    message_stubs = response.get("messages", [])
+    remaining_cap = _ALL_MAIL_SAFETY_CAP if max_results is None else max_results
+
+    message_stubs: list[dict] = []
+    page_token: str | None = None
+    while remaining_cap > 0:
+        page_size = min(_LIST_PAGE_SIZE, remaining_cap)
+        response = (
+            service.users()
+            .messages()
+            .list(
+                userId="me",
+                maxResults=page_size,
+                labelIds=["INBOX"],
+                pageToken=page_token,
+            )
+            .execute()
+        )
+        stubs = response.get("messages", [])
+        message_stubs.extend(stubs)
+        remaining_cap -= len(stubs)
+        page_token = response.get("nextPageToken")
+        if not page_token or not stubs:
+            break
 
     emails: list[EmailMessage] = []
     for stub in message_stubs:

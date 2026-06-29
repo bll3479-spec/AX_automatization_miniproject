@@ -27,7 +27,7 @@ app = FastAPI(title="자봐")
 _overrides: dict[str, Category] = {}
 
 
-def _fetch_source_emails(source: str, limit: int) -> list[EmailMessage]:
+def _fetch_source_emails(source: str, limit: int | None) -> list[EmailMessage]:
     if source == "demo":
         return DEMO_EMAILS[:limit]
     if source == "gmail":
@@ -71,7 +71,7 @@ def get_categories() -> list[CategoryInfo]:
 
 
 @app.get("/api/emails")
-def get_emails(source: str = "demo", category: Category | None = None, limit: int = 20) -> dict:
+def get_emails(source: str = "demo", category: Category | None = None, limit: int | None = 20) -> dict:
     emails = _fetch_source_emails(source, limit)
     classified = _classify_all(emails)
     counts = Counter(c.result.category.value for c in classified)
