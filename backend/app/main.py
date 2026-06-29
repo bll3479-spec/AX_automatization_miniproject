@@ -85,21 +85,23 @@ def classify(req: ClassifyRequest) -> dict:
     emails = _fetch_source_emails(req.source, req.limit)
     classified = _classify_all(emails)
 
+    label_apply_failures = 0
     if req.source == "gmail" and req.apply_labels:
         label_id_by_category: dict[str, str] = {}
         for item in classified:
             cat_value = item.result.category.value
             if cat_value not in label_id_by_category:
                 label_id_by_category[cat_value] = ensure_label(cat_value)
-        apply_labels_batch(
+        failed_ids = apply_labels_batch(
             [
                 (item.email.id, label_id_by_category[item.result.category.value])
                 for item in classified
             ]
         )
+        label_apply_failures = len(failed_ids)
 
     counts = Counter(c.result.category.value for c in classified)
-    return {"emails": classified, "counts": counts}
+    return {"emails": classified, "counts": counts, "label_apply_failures": label_apply_failures}
 
 
 @app.post("/api/emails/{email_id}/override")

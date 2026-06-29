@@ -178,17 +178,24 @@ def _wait_until_label_usable(service, label_id: str, attempts: int = 5, delay: f
             time.sleep(delay)
 
 
-def apply_labels_batch(message_label_pairs: list[tuple[str, str]]) -> None:
+def apply_labels_batch(message_label_pairs: list[tuple[str, str]]) -> list[str]:
     """(메일 ID, 라벨 ID) 쌍들을 batch 요청으로 한 번에 적용한다.
 
-    막 생성된 라벨은 Gmail 쪽 전파 지연으로 일부가 'labelId not found'(400)로
-    실패할 수 있어, 실패한 것만 모아 짧게 재시도한다."""
+    막 생성된 라벨의 전파 지연, 또는 대량 요청 시 Gmail 쪽 사용자별 순간 요청 수
+    제한(버스트 레이트리밋)으로 일부가 실패할 수 있어, 실패한 것만 모아
+    지수 백오프(0.5s → 1s → 2s → 4s → 4s)로 재시도한다.
+
+    재시도를 모두 거치고도 실패하는 메일이 있을 수 있다 — 이미 성공한
+    나머지 메일의 라벨은 그대로 적용된 상태이므로, 예외를 던져 전체 응답을
+    실패시키는 대신 끝까지 실패한 메일 ID 목록을 반환해 호출자가 부분 실패를
+    알 수 있게 한다."""
     service = _get_service()
     pending = list(message_label_pairs)
+    delay = 0.5
 
-    for _ in range(3):
+    for _ in range(5):
         if not pending:
-            return
+            return []
         failed: list[tuple[str, str]] = []
         pending_by_request_id = {str(i): pair for i, pair in enumerate(pending)}
 
@@ -209,8 +216,9 @@ def apply_labels_batch(message_label_pairs: list[tuple[str, str]]) -> None:
             batch.execute()
 
         if not failed:
-            return
+            return []
         pending = failed
-        time.sleep(0.5)
+        time.sleep(delay)
+        delay = min(delay * 2, 4.0)
 
-    raise RuntimeError(f"{len(pending)}건의 라벨 적용에 실패했습니다 (Gmail API 오류).")
+    return [message_id for message_id, _ in pending]

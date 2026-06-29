@@ -375,6 +375,11 @@ async function runClassify() {
     state.pageByKey = {};
     renderSummary();
     render();
+    if (data.label_apply_failures) {
+      showError(
+        `분류는 완료됐지만 ${data.label_apply_failures}건은 Gmail 라벨 적용에 실패했습니다. "분류 실행"을 다시 눌러 재시도해보세요.`
+      );
+    }
   } catch (err) {
     showError(err.message);
   } finally {
