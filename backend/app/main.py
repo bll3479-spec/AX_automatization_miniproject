@@ -6,7 +6,7 @@ from fastapi.staticfiles import StaticFiles
 
 from app.classifier import classify_with_fallback
 from app.config import BASE_DIR
-from app.gmail_client import GmailNotConfigured, apply_label, ensure_label, fetch_recent_emails
+from app.gmail_client import GmailNotConfigured, apply_labels_batch, ensure_label, fetch_recent_emails
 from app.sample_data import DEMO_EMAILS
 from app.schemas import (
     CATEGORY_META,
@@ -91,7 +91,12 @@ def classify(req: ClassifyRequest) -> dict:
             cat_value = item.result.category.value
             if cat_value not in label_id_by_category:
                 label_id_by_category[cat_value] = ensure_label(cat_value)
-            apply_label(item.email.id, label_id_by_category[cat_value])
+        apply_labels_batch(
+            [
+                (item.email.id, label_id_by_category[item.result.category.value])
+                for item in classified
+            ]
+        )
 
     counts = Counter(c.result.category.value for c in classified)
     return {"emails": classified, "counts": counts}

@@ -72,6 +72,9 @@ _LIST_PAGE_SIZE = 500
 # max_results=None("전체")일 때 무한정 호출을 막기 위한 안전 상한.
 _ALL_MAIL_SAFETY_CAP = 2000
 
+# Gmail API가 batch 요청 1건당 허용하는 최대 하위 요청 수.
+_BATCH_SIZE = 100
+
 
 def fetch_recent_emails(max_results: int | None = 20) -> list[EmailMessage]:
     """max_results=None 이면 받은편지함 전체(안전 상한까지)를 페이지네이션으로 가져온다."""
@@ -100,17 +103,33 @@ def fetch_recent_emails(max_results: int | None = 20) -> list[EmailMessage]:
         if not page_token or not stubs:
             break
 
-    emails: list[EmailMessage] = []
-    for stub in message_stubs:
-        raw = (
-            service.users()
-            .messages()
-            .get(userId="me", id=stub["id"], format="metadata",
-                 metadataHeaders=["From", "Subject", "Date", "List-Unsubscribe"])
-            .execute()
-        )
-        emails.append(_parse_message(raw))
-    return emails
+    return _fetch_messages_batch(service, [stub["id"] for stub in message_stubs])
+
+
+def _fetch_messages_batch(service, message_ids: list[str]) -> list[EmailMessage]:
+    """메일 ID별로 .get()을 순차 호출하는 대신, batch 요청으로 묶어 호출 수를 줄인다."""
+    raw_by_id: dict[str, dict] = {}
+
+    def _callback(request_id, response, exception):
+        if exception is None:
+            raw_by_id[request_id] = response
+
+    for chunk_start in range(0, len(message_ids), _BATCH_SIZE):
+        chunk = message_ids[chunk_start : chunk_start + _BATCH_SIZE]
+        batch = service.new_batch_http_request(callback=_callback)
+        for message_id in chunk:
+            batch.add(
+                service.users().messages().get(
+                    userId="me",
+                    id=message_id,
+                    format="metadata",
+                    metadataHeaders=["From", "Subject", "Date", "List-Unsubscribe"],
+                ),
+                request_id=message_id,
+            )
+        batch.execute()
+
+    return [_parse_message(raw_by_id[mid]) for mid in message_ids if mid in raw_by_id]
 
 
 def _sanitize_label_name(category_value: str) -> str:
@@ -159,19 +178,39 @@ def _wait_until_label_usable(service, label_id: str, attempts: int = 5, delay: f
             time.sleep(delay)
 
 
-def apply_label(message_id: str, label_id: str) -> None:
-    from googleapiclient.errors import HttpError
+def apply_labels_batch(message_label_pairs: list[tuple[str, str]]) -> None:
+    """(메일 ID, 라벨 ID) 쌍들을 batch 요청으로 한 번에 적용한다.
 
+    막 생성된 라벨은 Gmail 쪽 전파 지연으로 일부가 'labelId not found'(400)로
+    실패할 수 있어, 실패한 것만 모아 짧게 재시도한다."""
     service = _get_service()
-    attempts = 3
-    for attempt in range(attempts):
-        try:
-            service.users().messages().modify(
-                userId="me", id=message_id, body={"addLabelIds": [label_id]}
-            ).execute()
+    pending = list(message_label_pairs)
+
+    for _ in range(3):
+        if not pending:
             return
-        except HttpError as exc:
-            if attempt < attempts - 1 and exc.resp.status == 400:
-                time.sleep(0.5)
-                continue
-            raise
+        failed: list[tuple[str, str]] = []
+        pending_by_request_id = {str(i): pair for i, pair in enumerate(pending)}
+
+        def _callback(request_id, response, exception):
+            if exception is not None:
+                failed.append(pending_by_request_id[request_id])
+
+        for chunk_start in range(0, len(pending), _BATCH_SIZE):
+            chunk = pending[chunk_start : chunk_start + _BATCH_SIZE]
+            batch = service.new_batch_http_request(callback=_callback)
+            for offset, (message_id, label_id) in enumerate(chunk):
+                batch.add(
+                    service.users().messages().modify(
+                        userId="me", id=message_id, body={"addLabelIds": [label_id]}
+                    ),
+                    request_id=str(chunk_start + offset),
+                )
+            batch.execute()
+
+        if not failed:
+            return
+        pending = failed
+        time.sleep(0.5)
+
+    raise RuntimeError(f"{len(pending)}건의 라벨 적용에 실패했습니다 (Gmail API 오류).")
