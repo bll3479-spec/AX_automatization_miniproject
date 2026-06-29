@@ -6,6 +6,8 @@ token.json이 없으면 GmailNotConfigured를 던지며, 데모 모드는 이 �
 
 from __future__ import annotations
 
+import time
+
 from app.config import settings
 from app.schemas import EmailMessage
 
@@ -114,11 +116,38 @@ def ensure_label(category_value: str) -> str:
         )
         .execute()
     )
-    return created["id"]
+    label_id = created["id"]
+    _wait_until_label_usable(service, label_id)
+    return label_id
+
+
+def _wait_until_label_usable(service, label_id: str, attempts: int = 5, delay: float = 0.5) -> None:
+    """방금 생성한 라벨은 Gmail 쪽에 전파되기까지 잠시 지연이 있어,
+    곧바로 메일에 적용하면 'labelId not found'가 날 수 있다. 라벨이 실제로
+    조회될 때까지 짧게 재시도해 이 지연을 흡수한다."""
+    from googleapiclient.errors import HttpError
+
+    for _ in range(attempts):
+        try:
+            service.users().labels().get(userId="me", id=label_id).execute()
+            return
+        except HttpError:
+            time.sleep(delay)
 
 
 def apply_label(message_id: str, label_id: str) -> None:
+    from googleapiclient.errors import HttpError
+
     service = _get_service()
-    service.users().messages().modify(
-        userId="me", id=message_id, body={"addLabelIds": [label_id]}
-    ).execute()
+    attempts = 3
+    for attempt in range(attempts):
+        try:
+            service.users().messages().modify(
+                userId="me", id=message_id, body={"addLabelIds": [label_id]}
+            ).execute()
+            return
+        except HttpError as exc:
+            if attempt < attempts - 1 and exc.resp.status == 400:
+                time.sleep(0.5)
+                continue
+            raise
