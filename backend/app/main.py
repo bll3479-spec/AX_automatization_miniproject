@@ -10,6 +10,8 @@ from app.gmail_client import GmailNotConfigured, apply_label, ensure_label, fetc
 from app.sample_data import DEMO_EMAILS
 from app.schemas import (
     CATEGORY_META,
+    MAIN_CATEGORY_ORDER,
+    MINOR_CATEGORY_ORDER,
     Category,
     CategoryInfo,
     ClassificationResult,
@@ -19,7 +21,7 @@ from app.schemas import (
     OverrideRequest,
 )
 
-app = FastAPI(title="이메일 자동 카테고리 분류")
+app = FastAPI(title="자봐")
 
 # email_id -> 사람이 수동으로 정정한 카테고리 (인메모리 보관, 미니프로젝트 범위상 DB 미사용)
 _overrides: dict[str, Category] = {}
@@ -56,9 +58,15 @@ def health() -> dict:
 
 @app.get("/api/categories", response_model=list[CategoryInfo])
 def get_categories() -> list[CategoryInfo]:
+    ordered = MAIN_CATEGORY_ORDER + MINOR_CATEGORY_ORDER
     return [
-        CategoryInfo(id=cat, label_ko=meta["label_ko"], color=meta["color"])
-        for cat, meta in CATEGORY_META.items()
+        CategoryInfo(
+            id=cat,
+            label_ko=CATEGORY_META[cat]["label_ko"],
+            color=CATEGORY_META[cat]["color"],
+            is_main=cat in MAIN_CATEGORY_ORDER,
+        )
+        for cat in ordered
     ]
 
 

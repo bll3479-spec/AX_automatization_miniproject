@@ -10,6 +10,7 @@ const applyLabelsCheckbox = document.getElementById("apply-labels-checkbox");
 const refreshBtn = document.getElementById("refresh-btn");
 const summaryEl = document.getElementById("summary");
 const tabsEl = document.getElementById("category-tabs");
+const homeSectionsEl = document.getElementById("home-sections");
 const listEl = document.getElementById("email-list");
 const errorBanner = document.getElementById("error-banner");
 
@@ -58,7 +59,7 @@ function renderTabs() {
   allTab.onclick = () => {
     state.activeCategory = null;
     renderTabs();
-    renderList();
+    render();
   };
   tabsEl.appendChild(allTab);
 
@@ -69,10 +70,125 @@ function renderTabs() {
     tab.onclick = () => {
       state.activeCategory = cat.id;
       renderTabs();
-      renderList();
+      render();
     };
     tabsEl.appendChild(tab);
   }
+}
+
+function render() {
+  if (state.activeCategory === null) {
+    homeSectionsEl.hidden = false;
+    listEl.hidden = true;
+    renderHome();
+  } else {
+    homeSectionsEl.hidden = true;
+    listEl.hidden = false;
+    renderList();
+  }
+}
+
+function renderHome() {
+  homeSectionsEl.innerHTML = "";
+
+  const mainCats = state.categories.filter((c) => c.is_main);
+  const minorCats = state.categories.filter((c) => !c.is_main);
+
+  const sectionsWrap = document.createElement("div");
+  sectionsWrap.className = "main-sections";
+  for (const cat of mainCats) {
+    sectionsWrap.appendChild(renderMainSection(cat));
+  }
+  homeSectionsEl.appendChild(sectionsWrap);
+  homeSectionsEl.appendChild(renderMinorSummary(minorCats));
+}
+
+function renderMainSection(cat) {
+  const items = state.emails.filter((item) => item.result.category === cat.id);
+
+  const section = document.createElement("section");
+  section.className = "main-section-card";
+
+  const header = document.createElement("div");
+  header.className = "main-section-header";
+  header.style.borderColor = cat.color;
+  header.innerHTML = `
+    <span class="main-section-title" style="color:${cat.color}">${escapeHtml(cat.label_ko)}</span>
+    <span class="main-section-count">${items.length}건</span>
+  `;
+  section.appendChild(header);
+
+  if (items.length === 0) {
+    const empty = document.createElement("p");
+    empty.className = "empty-state";
+    empty.textContent = "표시할 이메일이 없습니다.";
+    section.appendChild(empty);
+  } else {
+    for (const item of items) {
+      section.appendChild(renderCard(item));
+    }
+  }
+  return section;
+}
+
+function renderMinorSummary(minorCats) {
+  const wrap = document.createElement("section");
+  wrap.className = "minor-summary";
+
+  const title = document.createElement("h2");
+  title.className = "minor-summary-title";
+  title.textContent = "기타 알림";
+  wrap.appendChild(title);
+
+  const items = state.emails.filter((item) =>
+    minorCats.some((c) => c.id === item.result.category)
+  );
+
+  if (items.length === 0) {
+    const empty = document.createElement("p");
+    empty.className = "empty-state";
+    empty.textContent = "표시할 이메일이 없습니다.";
+    wrap.appendChild(empty);
+    return wrap;
+  }
+
+  for (const item of items) {
+    wrap.appendChild(renderMinorRow(item));
+  }
+  return wrap;
+}
+
+function renderMinorRow(item) {
+  const meta = categoryMeta(item.result.category);
+  const row = document.createElement("div");
+  row.className = "minor-row";
+
+  const tag = document.createElement("span");
+  tag.className = "tag tag-sm";
+  tag.style.background = meta.color;
+  tag.textContent = meta.label_ko;
+  row.appendChild(tag);
+
+  const text = document.createElement("span");
+  text.className = "minor-row-text";
+  text.innerHTML = `<strong>${escapeHtml(item.email.subject)}</strong> · ${escapeHtml(item.email.sender)}`;
+  row.appendChild(text);
+
+  const overrideSelect = document.createElement("select");
+  overrideSelect.className = "override-select override-select-sm";
+  for (const cat of state.categories) {
+    const opt = document.createElement("option");
+    opt.value = cat.id;
+    opt.textContent = cat.label_ko;
+    opt.selected = cat.id === item.result.category;
+    overrideSelect.appendChild(opt);
+  }
+  overrideSelect.onchange = async (e) => {
+    await overrideCategory(item.email.id, e.target.value);
+  };
+  row.appendChild(overrideSelect);
+
+  return row;
 }
 
 function renderList() {
@@ -178,7 +294,7 @@ async function runClassify() {
     state.emails = data.emails;
     state.counts = data.counts;
     renderSummary();
-    renderList();
+    render();
   } catch (err) {
     showError(err.message);
   } finally {

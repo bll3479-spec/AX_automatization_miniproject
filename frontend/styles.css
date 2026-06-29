@@ -102,6 +102,110 @@ select, button {
   gap: 12px;
 }
 
+.home-sections {
+  padding: 0 28px 40px;
+}
+
+.main-sections {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+@media (max-width: 960px) {
+  .main-sections {
+    grid-template-columns: 1fr;
+  }
+}
+
+.main-section-card {
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 160px;
+}
+
+.main-section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  border-bottom: 3px solid;
+  padding-bottom: 8px;
+}
+
+.main-section-title {
+  font-size: 1.05rem;
+  font-weight: 800;
+}
+
+.main-section-count {
+  font-size: 0.8rem;
+  color: #6b7280;
+  font-weight: 600;
+}
+
+.main-section-card .email-card {
+  border: none;
+  border-bottom: 1px solid #f1f2f4;
+  border-radius: 0;
+  padding: 10px 0;
+}
+
+.main-section-card .email-card:last-child {
+  border-bottom: none;
+}
+
+.minor-summary {
+  background: #fafafa;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 12px 16px;
+}
+
+.minor-summary-title {
+  font-size: 0.85rem;
+  color: #6b7280;
+  margin: 0 0 8px;
+  font-weight: 700;
+}
+
+.minor-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 0;
+  border-bottom: 1px solid #eef0f2;
+  font-size: 0.8rem;
+}
+
+.minor-row:last-child {
+  border-bottom: none;
+}
+
+.minor-row-text {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: #4b5563;
+}
+
+.tag-sm {
+  padding: 2px 8px;
+  font-size: 0.65rem;
+}
+
+.override-select-sm {
+  font-size: 0.7rem;
+  padding: 2px 4px;
+}
+
 .email-card {
   background: white;
   border-radius: 12px;
