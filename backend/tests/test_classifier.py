@@ -109,6 +109,16 @@ def test_security_alert_email_without_login_keywords_is_classified_as_security()
     assert result.category == Category.SECURITY
 
 
+def test_privacy_policy_email_is_classified_as_security():
+    email = make_email(
+        sender="no-reply@service.co.kr",
+        subject="개인정보 처리방침 변경 안내",
+        snippet="개인정보 이용제공내역을 확인하실 수 있습니다.",
+    )
+    result = classify_email(email)
+    assert result.category == Category.SECURITY
+
+
 def test_security_email_never_needs_llm_fallback():
     """보안 카테고리는 인증번호 등 민감정보를 담고 있으므로 LLM 호출 경로에서 항상 제외되어야 한다."""
     email = make_email(
