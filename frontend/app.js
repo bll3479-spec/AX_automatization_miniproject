@@ -84,21 +84,32 @@ async function loadCategories() {
   state.categories = await res.json();
 }
 
+function selectCategory(categoryId) {
+  state.activeCategory = categoryId;
+  renderTabs();
+  renderSummary();
+  render();
+}
+
 function renderSummary() {
   summaryEl.innerHTML = "";
   const total = Object.values(state.counts).reduce((a, b) => a + b, 0);
-  const totalChip = document.createElement("span");
-  totalChip.className = "summary-chip";
+  const totalChip = document.createElement("button");
+  totalChip.type = "button";
+  totalChip.className = "summary-chip" + (state.activeCategory === null ? " active" : "");
   totalChip.style.background = "#1f2937";
   totalChip.textContent = `전체 ${total}건`;
+  totalChip.onclick = () => selectCategory(null);
   summaryEl.appendChild(totalChip);
 
   for (const cat of state.categories) {
     const count = state.counts[cat.id] || 0;
-    const chip = document.createElement("span");
-    chip.className = "summary-chip";
+    const chip = document.createElement("button");
+    chip.type = "button";
+    chip.className = "summary-chip" + (state.activeCategory === cat.id ? " active" : "");
     chip.style.background = cat.color;
     chip.textContent = `${cat.label_ko} ${count}`;
+    chip.onclick = () => selectCategory(cat.id);
     summaryEl.appendChild(chip);
   }
 }
@@ -108,22 +119,14 @@ function renderTabs() {
   const allTab = document.createElement("button");
   allTab.className = "tab" + (state.activeCategory === null ? " active" : "");
   allTab.textContent = "전체";
-  allTab.onclick = () => {
-    state.activeCategory = null;
-    renderTabs();
-    render();
-  };
+  allTab.onclick = () => selectCategory(null);
   tabsEl.appendChild(allTab);
 
   for (const cat of state.categories) {
     const tab = document.createElement("button");
     tab.className = "tab" + (state.activeCategory === cat.id ? " active" : "");
     tab.textContent = cat.label_ko;
-    tab.onclick = () => {
-      state.activeCategory = cat.id;
-      renderTabs();
-      render();
-    };
+    tab.onclick = () => selectCategory(cat.id);
     tabsEl.appendChild(tab);
   }
 }

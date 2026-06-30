@@ -67,11 +67,23 @@ select, button {
 }
 
 .summary-chip {
+  border: none;
   border-radius: 999px;
   padding: 6px 14px;
   font-size: 0.8rem;
   font-weight: 600;
+  font-family: inherit;
   color: white;
+  cursor: pointer;
+}
+
+.summary-chip:hover {
+  opacity: 0.85;
+}
+
+.summary-chip.active {
+  outline: 2px solid #1f2937;
+  outline-offset: 2px;
 }
 
 .tabs {
