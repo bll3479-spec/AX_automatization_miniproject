@@ -10,6 +10,7 @@ class Category(str, Enum):
     ANNOUNCEMENT = "announcement"
     PROMOTION = "promotion"
     NEWSLETTER = "newsletter"
+    REPORT = "report"
     OTHER = "other"
 
 
@@ -20,6 +21,7 @@ CATEGORY_META: dict[Category, dict] = {
     Category.ANNOUNCEMENT: {"label_ko": "공고", "color": "#0891b2"},
     Category.PROMOTION: {"label_ko": "프로모션", "color": "#ea580c"},
     Category.NEWSLETTER: {"label_ko": "오늘의 소식", "color": "#059669"},
+    Category.REPORT: {"label_ko": "보고서 및 간행물", "color": "#854d0e"},
     Category.OTHER: {"label_ko": "기타", "color": "#6b7280"},
 }
 
@@ -30,8 +32,13 @@ MAIN_CATEGORY_ORDER: list[Category] = [
     Category.WORK,
     Category.PAYMENT,
 ]
-# 나머지는 하단에 작은 요약 리스트로 표시
-MINOR_CATEGORY_ORDER: list[Category] = [Category.SECURITY, Category.PROMOTION, Category.OTHER]
+# 나머지는 하단에 작은 요약 리스트로 표시 (보고서 및 간행물은 빈도가 낮아 여기 배치)
+MINOR_CATEGORY_ORDER: list[Category] = [
+    Category.SECURITY,
+    Category.PROMOTION,
+    Category.REPORT,
+    Category.OTHER,
+]
 
 
 class EmailMessage(BaseModel):
@@ -70,3 +77,7 @@ class ClassifyRequest(BaseModel):
 
 class OverrideRequest(BaseModel):
     category: Category
+
+
+class ClassifyBatchRequest(BaseModel):
+    emails: list[EmailMessage]

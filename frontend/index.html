@@ -26,8 +26,17 @@
         Gmail에 라벨 적용
       </label>
       <button id="refresh-btn">분류 실행</button>
+      <button id="apply-overrides-btn" class="apply-overrides-btn" disabled>
+        적용
+        <span id="pending-badge" class="pending-badge" hidden>0</span>
+      </button>
     </div>
   </header>
+
+  <div id="classify-progress" class="classify-progress" hidden>
+    <div class="classify-progress-bar"><div id="classify-progress-fill" class="classify-progress-fill"></div></div>
+    <span id="classify-progress-text" class="classify-progress-text"></span>
+  </div>
 
   <section id="summary" class="summary"></section>
 

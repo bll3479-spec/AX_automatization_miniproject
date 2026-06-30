@@ -1,4 +1,5 @@
 const PAGE_SIZE = 20;
+const CLASSIFY_BATCH_SIZE = 10;
 
 const state = {
   categories: [],
@@ -6,6 +7,8 @@ const state = {
   counts: {},
   activeCategory: null,
   pageByKey: {},
+  rawEmails: [],
+  pendingOverrides: {},
 };
 
 function getPage(key, totalItems) {
@@ -65,6 +68,42 @@ const tabsEl = document.getElementById("category-tabs");
 const homeSectionsEl = document.getElementById("home-sections");
 const listEl = document.getElementById("email-list");
 const errorBanner = document.getElementById("error-banner");
+const progressEl = document.getElementById("classify-progress");
+const progressFillEl = document.getElementById("classify-progress-fill");
+const progressTextEl = document.getElementById("classify-progress-text");
+const applyOverridesBtn = document.getElementById("apply-overrides-btn");
+const pendingBadgeEl = document.getElementById("pending-badge");
+
+function updatePendingUI() {
+  const count = Object.keys(state.pendingOverrides).length;
+  applyOverridesBtn.disabled = count === 0;
+  pendingBadgeEl.hidden = count === 0;
+  pendingBadgeEl.textContent = String(count);
+}
+
+function showProgress(processed, total, done) {
+  if (total === 0) {
+    progressEl.hidden = true;
+    return;
+  }
+  progressEl.hidden = false;
+  const pct = Math.round((processed / total) * 100);
+  progressFillEl.style.width = `${pct}%`;
+  progressFillEl.classList.toggle("is-done", done);
+  progressTextEl.textContent = done ? `분류 완료 (${total}건)` : `${processed}/${total}건 분류 중... (${pct}%)`;
+}
+
+function hideProgress() {
+  progressEl.hidden = true;
+}
+
+function countByCategory(classified) {
+  const counts = {};
+  for (const item of classified) {
+    counts[item.result.category] = (counts[item.result.category] || 0) + 1;
+  }
+  return counts;
+}
 
 function categoryMeta(categoryId) {
   return state.categories.find((c) => c.id === categoryId) || { label_ko: categoryId, color: "#6b7280" };
@@ -345,42 +384,141 @@ function escapeHtml(str) {
   return div.innerHTML;
 }
 
-async function overrideCategory(emailId, category) {
-  await fetch(`/api/emails/${encodeURIComponent(emailId)}/override`, {
+// 정정 사항은 즉시 서버로 보내지 않고 로컬에 스테이징만 한다 (Story 4.1, AD-4).
+// "적용" 버튼을 눌러야 applyPendingOverrides()가 실제로 반영한다.
+function overrideCategory(emailId, category) {
+  state.pendingOverrides[emailId] = category;
+  updatePendingUI();
+}
+
+async function applyPendingOverrides() {
+  const entries = Object.entries(state.pendingOverrides);
+  if (entries.length === 0) return;
+
+  showError(null);
+  applyOverridesBtn.disabled = true;
+  applyOverridesBtn.textContent = "적용 중...";
+  try {
+    for (const [emailId, category] of entries) {
+      const res = await fetch(`/api/emails/${encodeURIComponent(emailId)}/override`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ category }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.detail || `요청 실패 (${res.status})`);
+      }
+    }
+
+    // source를 다시 조회하지 않고 이미 메모리에 있는 state.rawEmails를 재사용해 재분류는 1회만 실행한다 (AD-3/AD-4).
+    const classified = await classifyRawInBatches(state.rawEmails);
+    state.emails = classified;
+    state.counts = countByCategory(classified);
+    state.pageByKey = {};
+    state.pendingOverrides = {};
+    renderSummary();
+    render();
+  } catch (err) {
+    showError(err.message);
+  } finally {
+    applyOverridesBtn.textContent = "적용";
+    updatePendingUI();
+  }
+}
+
+async function fetchRawEmails(source, limit) {
+  const params = new URLSearchParams({ source });
+  if (limit !== null) params.set("limit", String(limit));
+  const res = await fetch(`/api/emails/raw?${params.toString()}`);
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.detail || `요청 실패 (${res.status})`);
+  }
+  return res.json();
+}
+
+async function classifyBatch(emails) {
+  const res = await fetch("/api/classify/batch", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ category }),
+    body: JSON.stringify({ emails }),
   });
-  await runClassify();
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.detail || `요청 실패 (${res.status})`);
+  }
+  const data = await res.json();
+  return data.emails;
+}
+
+// 이미 가져온 이메일 목록을 일정 단위(batch)로 나눠 POST /api/classify/batch를 N회 호출하며 진행률(%)을 갱신한다 (AD-3).
+async function classifyRawInBatches(rawEmails) {
+  const total = rawEmails.length;
+  const classified = [];
+  showProgress(0, total, false);
+
+  for (let i = 0; i < total; i += CLASSIFY_BATCH_SIZE) {
+    const chunk = rawEmails.slice(i, i + CLASSIFY_BATCH_SIZE);
+    const chunkResult = await classifyBatch(chunk);
+    classified.push(...chunkResult);
+    showProgress(classified.length, total, false);
+  }
+
+  showProgress(total, total, true);
+  return classified;
+}
+
+// GET /api/emails/raw를 1회만 호출해 state.rawEmails에 저장한 뒤 배치 분류한다 (AD-3).
+async function runClassifyBatched(source, limit) {
+  state.rawEmails = await fetchRawEmails(source, limit);
+  return classifyRawInBatches(state.rawEmails);
 }
 
 async function runClassify() {
   showError(null);
+  state.pendingOverrides = {};
+  updatePendingUI();
   refreshBtn.disabled = true;
   refreshBtn.textContent = "분류 중...";
   try {
-    const res = await fetch("/api/classify", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        source: sourceSelect.value,
-        limit: limitSelect.value === "all" ? null : Number(limitSelect.value),
-        apply_labels: applyLabelsCheckbox.checked,
-      }),
-    });
-    if (!res.ok) {
-      const body = await res.json().catch(() => ({}));
-      throw new Error(body.detail || `요청 실패 (${res.status})`);
+    const source = sourceSelect.value;
+    const limit = limitSelect.value === "all" ? null : Number(limitSelect.value);
+    let classified;
+    let counts;
+    let labelApplyFailures = 0;
+
+    if (source === "gmail" && applyLabelsCheckbox.checked) {
+      // Gmail 라벨 적용은 기존 단건 /api/classify 경로를 그대로 사용한다 (하위 호환 유지).
+      hideProgress();
+      const res = await fetch("/api/classify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ source, limit, apply_labels: true }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.detail || `요청 실패 (${res.status})`);
+      }
+      const data = await res.json();
+      classified = data.emails;
+      counts = data.counts;
+      labelApplyFailures = data.label_apply_failures;
+      // 라벨 적용 경로도 Epic 4 "적용" 액션이 재사용할 수 있도록 state.rawEmails를 채워둔다 (AD-3 컨벤션).
+      state.rawEmails = classified.map((item) => item.email);
+    } else {
+      classified = await runClassifyBatched(source, limit);
+      counts = countByCategory(classified);
     }
-    const data = await res.json();
-    state.emails = data.emails;
-    state.counts = data.counts;
+
+    state.emails = classified;
+    state.counts = counts;
     state.pageByKey = {};
     renderSummary();
     render();
-    if (data.label_apply_failures) {
+    if (labelApplyFailures) {
       showError(
-        `분류는 완료됐지만 ${data.label_apply_failures}건은 Gmail 라벨 적용에 실패했습니다. "분류 실행"을 다시 눌러 재시도해보세요.`
+        `분류는 완료됐지만 ${labelApplyFailures}건은 Gmail 라벨 적용에 실패했습니다. "분류 실행"을 다시 눌러 재시도해보세요.`
       );
     }
   } catch (err) {
@@ -401,6 +539,8 @@ sourceSelect.addEventListener("change", () => {
 limitSelect.addEventListener("change", runClassify);
 
 refreshBtn.addEventListener("click", runClassify);
+
+applyOverridesBtn.addEventListener("click", applyPendingOverrides);
 
 (async function init() {
   applyLabelsCheckbox.disabled = true;

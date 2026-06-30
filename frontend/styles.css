@@ -59,6 +59,65 @@ select, button {
   color: #4b5563;
 }
 
+.apply-overrides-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #e5e7eb;
+  color: #9ca3af;
+  border-color: #d1d5db;
+  cursor: not-allowed;
+}
+
+.apply-overrides-btn:not(:disabled) {
+  background: #059669;
+  color: white;
+  border-color: #059669;
+  cursor: pointer;
+}
+
+.pending-badge {
+  background: rgba(255, 255, 255, 0.25);
+  border-radius: 999px;
+  padding: 1px 8px;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.classify-progress {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 28px 0;
+}
+
+.classify-progress-bar {
+  flex: 1;
+  height: 8px;
+  border-radius: 999px;
+  background: #e5e7eb;
+  overflow: hidden;
+}
+
+.classify-progress-fill {
+  height: 100%;
+  width: 0%;
+  background: #2563eb;
+  border-radius: 999px;
+  transition: width 0.15s ease;
+}
+
+.classify-progress-fill.is-done {
+  background: #059669;
+}
+
+.classify-progress-text {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #4b5563;
+  white-space: nowrap;
+}
+
 .summary {
   display: flex;
   gap: 10px;

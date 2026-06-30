@@ -119,6 +119,75 @@ def test_privacy_policy_email_is_classified_as_security():
     assert result.category == Category.SECURITY
 
 
+def test_case4_nabo_report_email_is_classified_as_report():
+    """addendum.md 사례 4: 국회예산정책처(NABO) 발간물 메일."""
+    email = make_email(
+        sender="w3@nabo.go.kr",
+        subject="[NABO Focus 제168호] 발간 안내",
+        snippet="국회예산정책처가 발간한 보고서를 안내드립니다.",
+    )
+    result = classify_email(email)
+    assert result.category == Category.REPORT
+
+
+def test_case4_seoul_report_email_is_classified_as_report():
+    """addendum.md 사례 4: 서울시(seoul.go.kr) 발간물 메일."""
+    email = make_email(
+        sender="noreply@seoul.go.kr",
+        subject="서울시 정책 보고서 발간 안내",
+        snippet="서울시 공식 발간물을 안내드립니다.",
+    )
+    result = classify_email(email)
+    assert result.category == Category.REPORT
+
+
+def test_case4_seoul_sender_beats_promotion_keyword_conflict():
+    """addendum.md 사례 4 충돌 위험: inews11@seoul.go.kr 발신 메일이 PROMOTION 키워드("할인")를 포함해도
+    발신자 매칭(+2점)이 PROMOTION 키워드 매칭(1점)을 이겨 REPORT로 분류되어야 한다 (thread id 19ef62903a6b0c7f)."""
+    email = make_email(
+        sender="inews11@seoul.go.kr",
+        thread_id="19ef62903a6b0c7f",
+        subject="15% 할인에 페이백까지...7월 1일 배달상품권 발행",
+        snippet="서울시 소식을 전해드립니다.",
+    )
+    result = classify_email(email)
+    assert result.category == Category.REPORT
+
+
+def test_case1_promo_sender_is_classified_as_promotion():
+    """addendum.md 사례 1: promos@wellness.iherb.com, WORK 키워드("마감")와의 마진이 위태로웠던 메일."""
+    email = make_email(
+        sender="promos@wellness.iherb.com",
+        subject="라스트 찬스! 2개 구매 시 1개 80% 할인 마감임박",
+        snippet="세일 마감 전에 서두르세요.",
+    )
+    result = classify_email(email)
+    assert result.category == Category.PROMOTION
+
+
+def test_case2_newsletter_with_payment_keyword_still_classified_as_newsletter():
+    """addendum.md 사례 2: 본문에 "결제" 키워드가 있어도 List-Unsubscribe 헤더가 있으면 NEWSLETTER로 유지되는 정상 동작 고정."""
+    email = make_email(
+        sender="neusral.news@neusral.com",
+        subject="이번 주 뉴스레터: 결제 시장 동향 브리핑",
+        snippet="구독자님을 위한 주간 소식입니다.",
+        has_list_unsubscribe=True,
+    )
+    result = classify_email(email)
+    assert result.category == Category.NEWSLETTER
+
+
+def test_case3_coupang_membership_receipt_is_classified_as_payment():
+    """addendum.md 사례 3: 쿠팡 와우 멤버십 영수증이 PROMOTION으로 역전 분류되던 문제."""
+    email = make_email(
+        sender="no_reply@coupang.com",
+        subject="와우 멤버십 월회비가 결제되었습니다",
+        snippet="멤버십 정기결제가 완료되었습니다. 할인 혜택과 무료배송을 계속 이용하세요.",
+    )
+    result = classify_email(email)
+    assert result.category == Category.PAYMENT
+
+
 def test_security_email_never_needs_llm_fallback():
     """보안 카테고리는 인증번호 등 민감정보를 담고 있으므로 LLM 호출 경로에서 항상 제외되어야 한다."""
     email = make_email(

@@ -21,7 +21,7 @@ SECURITY_KEYWORDS = [
 
 PAYMENT_KEYWORDS = [
     "결제", "영수증", "청구서", "주문확인", "주문 확인", "주문 내역", "환불",
-    "구매내역", "구매 확인", "카드 승인", "출금 안내", "정기결제",
+    "구매내역", "구매 확인", "카드 승인", "출금 안내", "정기결제", "멤버십",
     "invoice", "receipt", "payment confirmation", "order confirmation",
     "your order", "purchase", "billed", "billing", "charged", "refund",
     "subscription renewed", "payment received", "transaction",
@@ -50,6 +50,7 @@ PROMOTION_KEYWORDS = [
     "sale", "% off", "percent off", "coupon", "discount", "limited time",
     "deal", "free shipping", "black friday",
 ]
+PROMOTION_SENDERS = ["promo"]
 
 NEWSLETTER_KEYWORDS = [
     "뉴스레터", "구독", "주간 소식", "월간 소식", "위클리", "데일리 브리핑",
@@ -58,12 +59,16 @@ NEWSLETTER_KEYWORDS = [
 ]
 NEWSLETTER_SENDERS = ["substack.com", "mailchimp", "list-manage.com", "news@", "digest@"]
 
+REPORT_KEYWORDS: list[str] = []
+REPORT_SENDERS = ["seoul.go.kr", "nabo.go.kr"]
+
 # (category, keyword_list, sender_list) 순서가 곧 동점 시 우선순위
 _RULE_TABLE: list[tuple[Category, list[str], list[str]]] = [
     (Category.PAYMENT, PAYMENT_KEYWORDS, PAYMENT_SENDERS),
     (Category.WORK, WORK_KEYWORDS, WORK_SENDERS),
     (Category.ANNOUNCEMENT, ANNOUNCEMENT_KEYWORDS, ANNOUNCEMENT_SENDERS),
-    (Category.PROMOTION, PROMOTION_KEYWORDS, []),
+    (Category.REPORT, REPORT_KEYWORDS, REPORT_SENDERS),
+    (Category.PROMOTION, PROMOTION_KEYWORDS, PROMOTION_SENDERS),
     (Category.NEWSLETTER, NEWSLETTER_KEYWORDS, NEWSLETTER_SENDERS),
 ]
 

@@ -16,6 +16,7 @@ from app.schemas import (
     CategoryInfo,
     ClassificationResult,
     ClassifiedEmail,
+    ClassifyBatchRequest,
     ClassifyRequest,
     EmailMessage,
     OverrideRequest,
@@ -78,6 +79,17 @@ def get_emails(source: str = "demo", category: Category | None = None, limit: in
     if category is not None:
         classified = [c for c in classified if c.result.category == category]
     return {"emails": classified, "counts": counts}
+
+
+@app.get("/api/emails/raw", response_model=list[EmailMessage])
+def get_emails_raw(source: str = "demo", limit: int | None = 20) -> list[EmailMessage]:
+    return _fetch_source_emails(source, limit)
+
+
+@app.post("/api/classify/batch")
+def classify_batch(req: ClassifyBatchRequest) -> dict:
+    classified = _classify_all(req.emails)
+    return {"emails": classified}
 
 
 @app.post("/api/classify")

@@ -19,7 +19,7 @@ inputDocuments: [
 ### Functional Requirements
 
 FR-1: `PROMOTION_SENDERS` 리스트를 신설하고 최소 `"promo"` 패턴을 포함해 `_RULE_TABLE`의 PROMOTION 항목에 반영한다 (사례 1: `promos@wellness.iherb.com`).
-FR-2: `PAYMENT_KEYWORDS`에 정기결제/멤버십 계열 키워드(예: "정기결제", "멤버십")를 추가해 사례 3(쿠팡 와우 멤버십 영수증이 PROMOTION으로 역전되는 문제)을 완화한다.
+FR-2: `PAYMENT_KEYWORDS`에 멤버십 계열 키워드(예: "멤버십")를 추가해 사례 3(쿠팡 와우 멤버십 영수증이 PROMOTION으로 역전되는 문제)을 완화한다. ("정기결제"는 이미 `PAYMENT_KEYWORDS`에 포함되어 있어 추가 작업이 필요 없다.)
 FR-3: `tests/test_classifier.py`에 사례 1·2·3 각각의 회귀 테스트를 추가한다. 사례 2는 코드 변경이 없는 "정상 동작" 케이스이므로, List-Unsubscribe 메커니즘이 의도대로 동작함을 고정하는 회귀 테스트로 포함한다.
 FR-4: `Category` enum에 신규 항목 `report`(한글 라벨 "보고서 및 간행물")를 추가한다.
 FR-5: 신규 `*_SENDERS` 리스트를 만들고 최소 `"seoul.go.kr"`, `"nabo.go.kr"` 패턴을 포함해 `_RULE_TABLE`에 반영한다 (addendum.md 사례 4 증거 기준). `nanet.go.kr`(국회도서관)은 실증된 수신 메일이 없어 이번 범위에서 제외한다.
@@ -35,7 +35,7 @@ FR-12: 적용되지 않은 변경 사항이 있을 때 이를 시각적으로 �
 
 NFR-1: SECURITY 이중 가드(`classifier.py:87-93`, `133-134`)는 어떤 변경에도 약화되지 않는다.
 NFR-2: 분류 점수 계산 알고리즘(가중치, List-Unsubscribe 보너스)은 변경하지 않는다.
-NFR-3: 기존 `test_classifier.py` 7개 테스트는 회귀 없이 통과해야 한다.
+NFR-3: 기존 `test_classifier.py` 11개 테스트는 회귀 없이 통과해야 한다.
 NFR-4: LLM 폴백 로직은 변경하지 않는다.
 
 ### Additional Requirements
@@ -98,7 +98,7 @@ FR-12: Epic 4 - 미적용 변경사항 시각적 표시
 ## Epic 1: 분류 규칙 정확도 보강
 
 **Goal:** 사용자가 보고한 오분류 사례(프로모션 메일이 결제로, 쿠팡 멤버십 결제가 프로모션으로 잘못 분류되는 문제)가 해결되어, 대시보드 분류 결과를 더 신뢰할 수 있게 된다.
-**FRs covered:** FR-1, FR-2, FR-3 | **Governed by:** AD-2 (NFR-2) | **NFR:** NFR-3 (기존 7개 테스트 회귀 없음)
+**FRs covered:** FR-1, FR-2, FR-3 | **Governed by:** AD-2 (NFR-2) | **NFR:** NFR-3 (기존 11개 테스트 회귀 없음)
 
 ### Story 1.1: PROMOTION 발신자 패턴 보강
 
@@ -122,8 +122,8 @@ So that 결제 영수증이 프로모션 메일로 역전 분류되어 놓치는
 
 **Acceptance Criteria:**
 
-**Given** `PAYMENT_KEYWORDS`에 "정기결제"/"멤버십" 계열 키워드가 없어 발신자 `no_reply@coupang.com`의 "와우 멤버십 월회비가 결제되었습니다" 메일이 PAYMENT 1점 vs PROMOTION 2점("할인","무료배송")으로 PROMOTION으로 오분류되는 상태에서 (addendum.md 사례 3 근거)
-**When** `PAYMENT_KEYWORDS`에 "정기결제", "멤버십" 등의 키워드를 추가해 `_RULE_TABLE`의 PAYMENT 행에 반영하면
+**Given** `PAYMENT_KEYWORDS`에 이미 "정기결제"는 포함되어 있지만 "멤버십" 계열 키워드가 없어 발신자 `no_reply@coupang.com`의 "와우 멤버십 월회비가 결제되었습니다" 메일이 PAYMENT 1점("결제") vs PROMOTION 2점("할인","무료배송")으로 PROMOTION으로 오분류되는 상태에서 (addendum.md 사례 3 근거)
+**When** `PAYMENT_KEYWORDS`에 "멤버십" 키워드를 추가해 `_RULE_TABLE`의 PAYMENT 행에 반영하면
 **Then** 동일 메일은 PAYMENT 키워드 매칭이 ["결제","멤버십"] 2점으로 늘어나 PROMOTION(2점)과 동점 이상이 되어 우선순위 규칙(또는 동점 처리 로직)에 따라 PAYMENT로 분류되거나, 최소한 PROMOTION 단독 우위가 해소된다
 **And** 발신자 패턴(`PAYMENT_SENDERS`)만으로는 근본 해결이 어렵다는 점(같은 발신자가 결제/프로모션 메일을 함께 보냄)을 감안해 키워드 보강만으로 구현한다 — `PAYMENT_SENDERS`에 쿠팡 패턴을 새로 추가하지 않는다
 **And** 점수 계산식과 NEWSLETTER `+2` 보너스는 수정하지 않는다 (AD-2/NFR-2 준수)
@@ -134,9 +134,9 @@ As a 자봐 개발자,
 I want 사례 1(PROMOTION 발신자), 사례 2(List-Unsubscribe 정상 동작), 사례 3(PAYMENT 키워드 보강) 각각의 회귀 테스트가 `tests/test_classifier.py`에 추가되기를,
 So that 향후 변경이 이 세 가지 오분류 수정을 다시 깨뜨리지 않는다는 것을 자동으로 검증할 수 있다.
 
-**Given** `tests/test_classifier.py`에 기존 7개 테스트가 존재하고 사례 1·2·3에 대한 회귀 테스트가 없는 상태에서
+**Given** `tests/test_classifier.py`에 기존 11개 테스트가 존재하고 사례 1·2·3에 대한 회귀 테스트가 없는 상태에서
 **When** 사례 1(발신자 `promos@wellness.iherb.com`, 제목 "라스트 찬스! ... 80% 할인" → PROMOTION 분류 검증), 사례 2(발신자 `neusral.news@neusral.com`, "결제" 키워드 포함 + List-Unsubscribe 헤더 존재 → NEWSLETTER 분류 검증, 코드 변경 없는 정상 동작 고정), 사례 3(발신자 `no_reply@coupang.com`, "와우 멤버십 월회비가 결제되었습니다" → PAYMENT 분류 검증) 각각의 테스트 함수를 추가하면
-**Then** 신규 테스트 3건과 기존 테스트 7건을 합쳐 총 10건이 `pytest`로 모두 통과한다
+**Then** 신규 테스트 3건과 기존 테스트 11건을 합쳐 총 14건이 `pytest`로 모두 통과한다
 **And** 사례 2 테스트는 코드 변경 없이도 통과해야 하며(List-Unsubscribe 메커니즘이 의도대로 동작함을 고정하는 회귀 테스트), 사례 1·3 테스트는 Story 1.1·1.2 구현 이후에만 통과한다
 **And** NFR-3(기존 테스트 회귀 없음)을 만족함을 이 테스트 실행으로 증명한다
 
@@ -181,7 +181,7 @@ So that 향후 변경이 REPORT 분류를, 특히 PROMOTION 키워드와 충돌�
 
 **Given** `tests/test_classifier.py`에 REPORT 카테고리에 대한 테스트가 없는 상태에서
 **When** Story 2.2 구현 이후, 발신자 `noreply@seoul.go.kr`/`w3@nabo.go.kr` 등 일반 REPORT 메일의 분류를 검증하는 테스트와, 발신자 `inews11@seoul.go.kr`이 보낸 "15% 할인에 페이백까지…7월 1일 배달상품권 발행"(thread id `19ef62903a6b0c7f`) 메일이 PROMOTION 키워드("할인")를 포함함에도 REPORT로 분류되는지(발신자 매칭 +2점이 PROMOTION 키워드 매칭을 이김) 검증하는 테스트를 추가하면
-**Then** 신규 테스트가 Story 1.3의 10건에 더해 모두 `pytest`로 통과한다
+**Then** 신규 테스트가 Story 1.3의 14건에 더해 모두 `pytest`로 통과한다
 **And** 발신자 가중치가 PROMOTION 키워드 충돌을 이기지 못하는 경우(예: PROMOTION 키워드가 다수 겹치는 메일)는 이번 범위의 회귀 테스트로 고정하지 않고, 향후 모니터링 대상으로 별도 기록한다 (addendum.md 사례 4 "충돌 위험" 참고)
 **And** NFR-3(기존 테스트 회귀 없음)을 만족함을 이 테스트 실행으로 증명한다
 

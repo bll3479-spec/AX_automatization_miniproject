@@ -22,7 +22,7 @@ updated: '2026-06-30'
 브리프 사례 1·2·3에서 확인된 실제 오분류를 `classifier.py`의 키워드/발신자 리스트 확장만으로 해결한다. 점수 계산 알고리즘 자체는 변경하지 않는다.
 
 - **FR-1**: `PROMOTION_SENDERS` 리스트를 신설하고 최소 `"promo"` 패턴을 포함해 `_RULE_TABLE`의 PROMOTION 항목에 반영한다 (사례 1: `promos@wellness.iherb.com`).
-- **FR-2**: `PAYMENT_KEYWORDS`에 정기결제/멤버십 계열 키워드(예: "정기결제", "멤버십")를 추가해 사례 3(쿠팡 와우 멤버십 영수증이 PROMOTION으로 역전되는 문제)을 완화한다.
+- **FR-2**: `PAYMENT_KEYWORDS`에 멤버십 계열 키워드(예: "멤버십")를 추가해 사례 3(쿠팡 와우 멤버십 영수증이 PROMOTION으로 역전되는 문제)을 완화한다. ("정기결제"는 이미 `PAYMENT_KEYWORDS`에 포함되어 있어 추가 작업이 필요 없다.)
 - **FR-3**: `tests/test_classifier.py`에 사례 1·2·3 각각의 회귀 테스트를 추가한다. 사례 2는 코드 변경이 없는 "정상 동작" 케이스이므로, List-Unsubscribe 메커니즘이 의도대로 동작함을 고정하는 회귀 테스트로 포함한다.
 
 > **알려진 한계 (모니터링 대상, 이번 범위 아님)**: `WORK_KEYWORDS`의 "마감"이 프로모션 카피("세일 마감임박")에도 흔히 등장해, PROMOTION 키워드가 1개뿐인 메일에서는 WORK로 잘못 분류될 위험이 남아있다(브리프 Known Limitations 참고). 이번 범위는 FR-1·FR-2의 키워드/발신자 보강으로 완화하되, 근본 해결(키워드 가중치 차등 등)은 NFR-2에 의해 이번 범위에서 제외된다.
@@ -55,7 +55,7 @@ updated: '2026-06-30'
 
 - **NFR-1**: SECURITY 이중 가드(`classifier.py:87-93`, `133-134`)는 어떤 변경에도 약화되지 않는다.
 - **NFR-2**: 분류 점수 계산 알고리즘(가중치, List-Unsubscribe 보너스)은 변경하지 않는다.
-- **NFR-3**: 기존 `test_classifier.py` 7개 테스트는 회귀 없이 통과해야 한다.
+- **NFR-3**: 기존 `test_classifier.py` 11개 테스트는 회귀 없이 통과해야 한다.
 - **NFR-4**: LLM 폴백 로직은 변경하지 않는다.
 
 ## Success Metrics

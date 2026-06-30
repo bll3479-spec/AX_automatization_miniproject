@@ -122,7 +122,7 @@ backend/app/
   main.py            # GET /api/emails/raw, POST /api/classify/batch 추가 (AD-3/AD-4)
 frontend/
   app.js             # 배치 진행률 state, pendingOverrides 스테이징 로직
-tests/
+backend/tests/
   test_classifier.py # 사례 1~4 회귀 테스트 4건 추가 (FR-3, FR-7)
 ```
 
