@@ -188,6 +188,67 @@ def test_case3_coupang_membership_receipt_is_classified_as_payment():
     assert result.category == Category.PAYMENT
 
 
+def test_promo_email_with_generic_deadline_word_is_not_misclassified_as_work():
+    """실제 Gmail 표본 사례: edu@saltlux.com 광고 메일이 "마감임박"이라는 표현 때문에
+    WORK로 오분류되던 문제. "마감"은 채용/프로모션 등에서도 흔히 쓰이는 범용 단어라
+    WORK_KEYWORDS에서 제외했다 — 이제 OTHER로 떨어지는 게(과도한 일반화보다) 안전하다."""
+    email = make_email(
+        sender="edu@saltlux.com",
+        subject="[마감임박] 우리 회사, 교육비 95% 환급 대상일까요?",
+        snippet="AI 전문기업 솔트룩스 AX 실무교육 90~95% 교육비 환급",
+    )
+    result = classify_email(email)
+    assert result.category != Category.WORK
+
+
+def test_apnews_sender_domain_is_classified_as_newsletter():
+    """실제 Gmail 표본 사례: AP News 모닝 다이제스트(apnews.com)는 제목에 뉴스레터
+    키워드가 없어 발신 도메인 매칭으로 NEWSLETTER 분류되어야 한다."""
+    email = make_email(
+        sender="morningwire@apnews.com",
+        subject="Supreme Court expands Trump's power",
+        snippet="Iran war, Venezuela quakes, World Cup ADVERTISEMENT View in Browser",
+    )
+    result = classify_email(email)
+    assert result.category == Category.NEWSLETTER
+
+
+def test_samsungpop_sender_domain_is_classified_as_newsletter():
+    """실제 Gmail 표본 사례: 삼성증권 데일리 투자 브리핑(samsungpop.com)은 제목에
+    뉴스레터 키워드가 없어 발신 도메인 매칭으로 NEWSLETTER 분류되어야 한다."""
+    email = make_email(
+        sender="callmaster@samsungpop.com",
+        subject="[삼성증권] '26년 하반기 글로벌 자산 배분",
+        snippet="오늘 새로 나온 투자 정보, 글로벌 주간 투자 전략",
+    )
+    result = classify_email(email)
+    assert result.category == Category.NEWSLETTER
+
+
+def test_newsletter_sender_prefix_matches_newsletter_at_domain():
+    """실제 Gmail 표본 사례: newsletter@investingmail.com처럼 발신자가 "newsletter@"로
+    시작하지만 제목/본문에 뉴스레터 키워드가 없는 메일도 NEWSLETTER로 분류되어야 한다."""
+    email = make_email(
+        sender="newsletter@investingmail.com",
+        subject="50조 국민연금 매도 D-1…증시 흔들 4대 변수",
+        snippet="요약한 메시지 | 6월 30, 2026",
+    )
+    result = classify_email(email)
+    assert result.category == Category.NEWSLETTER
+
+
+def test_newneek_sender_domain_is_classified_as_newsletter():
+    """실제 Gmail 표본 사례: 뉴니커(newneek.co)는 뉴스레터 자체가 서비스 브랜드라
+    제목에 뉴스레터 키워드가 없어도 발신 도메인만으로 NEWSLETTER로 분류되어야 한다."""
+    email = make_email(
+        sender="whatsup@newneek.co",
+        subject="캘린더 박제! 하반기 도서전·영화제·전시 총정리",
+        snippet="고슴이의 비트 ㅣ 비트 큐레이션",
+    )
+    result = classify_email(email)
+    assert result.category == Category.NEWSLETTER
+
+
 def test_security_email_never_needs_llm_fallback():
     """보안 카테고리는 인증번호 등 민감정보를 담고 있으므로 LLM 호출 경로에서 항상 제외되어야 한다."""
     email = make_email(

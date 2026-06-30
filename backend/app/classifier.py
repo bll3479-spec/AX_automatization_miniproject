@@ -31,7 +31,7 @@ PAYMENT_SENDERS = [
 ]
 
 WORK_KEYWORDS = [
-    "회의", "미팅", "회의록", "프로젝트", "마감", "스탠드업", "주간보고", "재택",
+    "회의", "미팅", "회의록", "프로젝트", "스탠드업", "주간보고", "재택",
     "pull request", "merge request", "code review", "standup", "meeting",
     "calendar invite", "deadline", "jira", "pr review",
 ]
@@ -57,7 +57,14 @@ NEWSLETTER_KEYWORDS = [
     "구독 해지", "매거진", "newsletter", "weekly digest", "daily digest",
     "unsubscribe",
 ]
-NEWSLETTER_SENDERS = ["substack.com", "mailchimp", "list-manage.com", "news@", "digest@"]
+NEWSLETTER_SENDERS = [
+    "substack.com", "mailchimp", "list-manage.com", "news@", "digest@",
+    "newsletter@", "newneek.co",
+    # 정기 뉴스/투자 다이제스트를 보내는 발신 도메인. SECURITY 규칙이 먼저
+    # 검사되어 단락되므로, 같은 도메인에서 온 인증/보안 메일이 여기로
+    # 잘못 분류될 위험은 없다.
+    "apnews.com", "samsungpop.com",
+]
 
 REPORT_KEYWORDS: list[str] = []
 REPORT_SENDERS = ["seoul.go.kr", "nabo.go.kr"]
