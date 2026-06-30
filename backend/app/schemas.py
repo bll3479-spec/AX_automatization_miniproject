@@ -7,6 +7,7 @@ class Category(str, Enum):
     SECURITY = "security"
     PAYMENT = "payment"
     WORK = "work"
+    ANNOUNCEMENT = "announcement"
     PROMOTION = "promotion"
     NEWSLETTER = "newsletter"
     OTHER = "other"
@@ -16,13 +17,19 @@ CATEGORY_META: dict[Category, dict] = {
     Category.SECURITY: {"label_ko": "보안", "color": "#e11d48"},
     Category.PAYMENT: {"label_ko": "영수증", "color": "#2563eb"},
     Category.WORK: {"label_ko": "업무", "color": "#7c3aed"},
+    Category.ANNOUNCEMENT: {"label_ko": "공고", "color": "#0891b2"},
     Category.PROMOTION: {"label_ko": "프로모션", "color": "#ea580c"},
     Category.NEWSLETTER: {"label_ko": "오늘의 소식", "color": "#059669"},
     Category.OTHER: {"label_ko": "기타", "color": "#6b7280"},
 }
 
-# 첫 화면에서 큰 섹션으로 강조할 메인 카테고리 (오늘의 소식 → 업무 → 영수증)
-MAIN_CATEGORY_ORDER: list[Category] = [Category.NEWSLETTER, Category.WORK, Category.PAYMENT]
+# 첫 화면에서 큰 섹션으로 강조할 메인 카테고리 (오늘의 소식 → 공고 → 업무 → 영수증)
+MAIN_CATEGORY_ORDER: list[Category] = [
+    Category.NEWSLETTER,
+    Category.ANNOUNCEMENT,
+    Category.WORK,
+    Category.PAYMENT,
+]
 # 나머지는 하단에 작은 요약 리스트로 표시
 MINOR_CATEGORY_ORDER: list[Category] = [Category.SECURITY, Category.PROMOTION, Category.OTHER]
 

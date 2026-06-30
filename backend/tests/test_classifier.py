@@ -79,6 +79,26 @@ def test_unmatched_email_falls_back_to_other_and_needs_llm():
     assert needs_llm_fallback(result) is True
 
 
+def test_announcement_email_classified_by_sender():
+    email = make_email(
+        sender="사람인 <noreply@saramin.co.kr>",
+        subject="백엔드 개발자 신입 공고 지원 마감 D-3",
+        snippet="입사지원하신 포지션의 서류 검토가 시작되었습니다.",
+    )
+    result = classify_email(email)
+    assert result.category == Category.ANNOUNCEMENT
+
+
+def test_announcement_email_classified_by_keyword():
+    email = make_email(
+        sender="recruit@somecompany.co.kr",
+        subject="[채용] 신입 개발자 공고 안내",
+        snippet="이번 하반기 입사지원 공고가 오픈되었습니다.",
+    )
+    result = classify_email(email)
+    assert result.category == Category.ANNOUNCEMENT
+
+
 def test_security_email_never_needs_llm_fallback():
     """보안 카테고리는 인증번호 등 민감정보를 담고 있으므로 LLM 호출 경로에서 항상 제외되어야 한다."""
     email = make_email(

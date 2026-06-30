@@ -1,6 +1,6 @@
 """규칙 기반 1차 분류 + (선택) LLM 보조 분류.
 
-분류 우선순위: SECURITY -> PAYMENT -> WORK -> PROMOTION -> NEWSLETTER -> OTHER.
+분류 우선순위: SECURITY -> PAYMENT -> WORK -> ANNOUNCEMENT -> PROMOTION -> NEWSLETTER -> OTHER.
 
 SECURITY로 판정된 메일은 인증번호/로그인알림 등 민감 정보를 담고 있을 수 있으므로,
 이 모듈 밖(orchestration)에서도 절대 LLM에 전달되지 않도록 분류 단계에서 즉시 확정한다.
@@ -38,6 +38,11 @@ WORK_SENDERS = [
     "calendar-notification@google.com",
 ]
 
+ANNOUNCEMENT_KEYWORDS = [
+    "입사지원", "신입", "공고",
+]
+ANNOUNCEMENT_SENDERS = ["사람인", "saramin", "인크루트", "incruit"]
+
 PROMOTION_KEYWORDS = [
     "할인", "세일", "특가", "쿠폰", "이벤트", "사은품", "무료배송", "한정수량",
     "sale", "% off", "percent off", "coupon", "discount", "limited time",
@@ -55,6 +60,7 @@ NEWSLETTER_SENDERS = ["substack.com", "mailchimp", "list-manage.com", "news@", "
 _RULE_TABLE: list[tuple[Category, list[str], list[str]]] = [
     (Category.PAYMENT, PAYMENT_KEYWORDS, PAYMENT_SENDERS),
     (Category.WORK, WORK_KEYWORDS, WORK_SENDERS),
+    (Category.ANNOUNCEMENT, ANNOUNCEMENT_KEYWORDS, ANNOUNCEMENT_SENDERS),
     (Category.PROMOTION, PROMOTION_KEYWORDS, []),
     (Category.NEWSLETTER, NEWSLETTER_KEYWORDS, NEWSLETTER_SENDERS),
 ]
