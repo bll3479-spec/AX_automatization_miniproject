@@ -1,6 +1,6 @@
 """규칙 기반 1차 분류 + (선택) LLM 보조 분류.
 
-분류 우선순위: SECURITY -> PAYMENT -> WORK -> ANNOUNCEMENT -> PROMOTION -> NEWSLETTER -> OTHER.
+분류 우선순위: SECURITY -> PAYMENT -> WORK -> ANNOUNCEMENT -> REPORT -> PROMOTION -> NEWSLETTER -> OTHER.
 
 SECURITY로 판정된 메일은 인증번호/로그인알림 등 민감 정보를 담고 있을 수 있으므로,
 이 모듈 밖(orchestration)에서도 절대 LLM에 전달되지 않도록 분류 단계에서 즉시 확정한다.

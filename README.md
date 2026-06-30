@@ -28,7 +28,7 @@ uvicorn app.main:app --reload
    ```bash
    cd backend
    cd scripts
-   python /gmail_auth.py
+   python gmail_auth.py
    ```
    브라우저가 열리며 로그인/동의를 마치면 `backend/token.json`이 생성됩니다.
 4. 앱을 실행하고 대시보드 상단에서 소스를 "실제 Gmail"로 바꾼 뒤 "분류 실행"을 누르면 받은편지함 최근 메일을 가져와 분류합니다.
