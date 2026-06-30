@@ -99,6 +99,16 @@ def test_announcement_email_classified_by_keyword():
     assert result.category == Category.ANNOUNCEMENT
 
 
+def test_security_alert_email_without_login_keywords_is_classified_as_security():
+    email = make_email(
+        sender="Google <no-reply@accounts.google.com>",
+        subject="보안 알림",
+        snippet="",
+    )
+    result = classify_email(email)
+    assert result.category == Category.SECURITY
+
+
 def test_security_email_never_needs_llm_fallback():
     """보안 카테고리는 인증번호 등 민감정보를 담고 있으므로 LLM 호출 경로에서 항상 제외되어야 한다."""
     email = make_email(

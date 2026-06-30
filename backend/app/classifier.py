@@ -12,6 +12,7 @@ from app.schemas import Category, ClassificationResult, EmailMessage
 SECURITY_KEYWORDS = [
     "인증번호", "인증코드", "본인확인", "2단계 인증", "이중 인증", "이중인증",
     "로그인 알림", "로그인 시도", "새 기기에서 로그인", "비밀번호 재설정", "비밀번호 변경",
+    "보안 알림", "보안 경고", "의심스러운 로그인", "계정 보안",
     "verification code", "one-time password", "one time password", "otp",
     "login alert", "sign-in attempt", "sign in attempt", "password reset",
     "security alert", "2fa",
