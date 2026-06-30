@@ -1,6 +1,6 @@
 # Addendum: 오분류 사례 원본 증거 및 점수 계산
 
-브리프 본문의 "The Problem"에서 요약한 3가지 사례의 원본 데이터와 수동 점수 계산. 다운스트림(PRD/구현) 작업 시 정확한 키워드/발신자 후보를 정할 때 참조. 사례 번호는 브리프 본문의 사례 1·2·3과 동일하게 맞춤.
+브리프 본문의 "The Problem"에서 요약한 4가지 사례의 원본 데이터와 수동 점수 계산(또는 발신자 조사 원본). 다운스트림(PRD/구현) 작업 시 정확한 키워드/발신자 후보를 정할 때 참조. 사례 번호는 브리프 본문의 사례 1·2·3·4와 동일하게 맞춤.
 
 ## 사례 1 검증 — 사용자 가설(promo~ 발신자) 확인
 
@@ -35,6 +35,25 @@
 - PROMOTION: 키워드 매칭 = `["할인", "무료배송"]` → 2점. 발신자 매칭 = 0(`PROMOTION_SENDERS`가 현재 빈 리스트). **총 2점**
 - 결과: PROMOTION(2) > PAYMENT(1) → **PROMOTION으로 오분류** (실제로는 결제 영수증 메일)
 
+## 사례 4 — 신규 카테고리 "보고서 및 간행물" 발신자 조사 (수기 메모 검증)
+
+사용자 수기 메모(`이메일 분류기_오류 케이스 수기 정리.md`)에 언급된 서울시청·국회예산정책처·국회도서관 발신 메일의 실제 발신자 주소를 Gmail MCP로 확인.
+
+**확인된 발신자 (실제 수신 메일 기준, 24건 검색 결과 중 일부)**:
+
+| 발신자 | 소속/서비스명 | 예시 제목 |
+|---|---|---|
+| `w3@nabo.go.kr` | 국회예산정책처 NABO 메일링서비스 | `[NABO Focus 제168호] 햇빛소득마을...` |
+| `noreply@seoul.go.kr` | 서울시 (제로서울뉴스/서울라이프 등 복수 발신물) | `[제로서울뉴스 vol.31] ...`, `[서울라이프] 11호 ...` |
+| `inews11@seoul.go.kr` | 내손안에 서울(Seoul My Soul) | `서울을 글로벌 TOP3로! ...` |
+| `opendata@seoul.go.kr` | 서울 열린데이터광장 뉴스레터 | `서울 열린데이터광장 뉴스레터 제63호` |
+
+세 발신자 모두 도메인이 `seoul.go.kr`로 동일해, 사용자 패턴 1개(`seoul.go.kr`)로 묶이고 `nabo.go.kr`을 별도로 추가하면 사례 4의 핵심 발신자는 커버된다.
+
+**미확인**: `국회도서관`/`nanet.go.kr`로 검색했으나 일치하는 메일을 찾지 못했다 — 수기 메모에는 있었지만 이번 조사로 실증되지 않은 항목이며, 발신자 패턴은 추가하지 않고 보류한다(브리프 본문 "Known Limitations" 참고).
+
+**충돌 위험 발견**: 검색 결과 중 `inews11@seoul.go.kr`이 보낸 한 건(`19ef62903a6b0c7f`, "15% 할인에 페이백까지…7월 1일 배달상품권 발행")은 PROMOTION_KEYWORDS와 매칭되는 "할인" 단어를 포함한다. 발신자 매칭 가중치(`+2`)가 일반적으로는 우세하지만, PROMOTION 키워드가 여러 개 겹치는 메일에서는 점수 경쟁이 다시 불안정해질 수 있다(브리프 본문 "Known Limitations" 참고).
+
 ## 조사 방법
 
 Gmail MCP 서버(`mcp__Gmail__search_threads`)로 사용자의 실제 인증된 Gmail 계정을 대상으로 다음 쿼리를 실행:
@@ -42,5 +61,7 @@ Gmail MCP 서버(`mcp__Gmail__search_threads`)로 사용자의 실제 인증된 
 2. `결제 (구독 OR 뉴스레터 OR unsubscribe OR "구독 해지")` — PAYMENT/NEWSLETTER 혼재 사례 탐색
 3. `from:promo` — 사용자 가설(promo~ 발신자) 직접 검증
 4. `(마감 OR 공고 OR 채용) (할인 OR 이벤트 OR 쿠폰)` — WORK/ANNOUNCEMENT/PROMOTION 혼재 사례 탐색 (인크루트 채용 공고 메일은 `ANNOUNCEMENT_SENDERS`의 `"incruit"` 패턴 매칭으로 이미 정상 분류됨을 확인 — 별도 이슈 없음)
+5. `from:seoul.go.kr OR from:nabo.go.kr OR from:nanet.go.kr OR 서울시청 OR 국회예산정책처 OR 국회도서관` — 사례 4(신규 카테고리) 발신자 패턴 확인
+6. `from:nanet.go.kr OR 국회도서관` — 국회도서관 발신자 단독 확인 (결과 없음)
 
 자봐 앱 자체는 이 컨테이너에 Gmail OAuth 자격증명(`credentials.json`/`token.json`)이 없어 `source=gmail`로 직접 구동할 수 없었음 — 대신 세션에 연결된 Gmail MCP 도구로 동일한 실제 메일함 데이터를 조사하고, `classifier.py` 로직을 수동 적용해 검증했다.
