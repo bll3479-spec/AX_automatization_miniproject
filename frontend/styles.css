@@ -161,6 +161,7 @@ select, button {
   grid-template-columns: repeat(2, 1fr);
   gap: 16px;
   margin-bottom: 20px;
+  align-items: start;
 }
 
 @media (max-width: 640px) {
@@ -329,6 +330,24 @@ select, button {
 .pager-btn:disabled {
   opacity: 0.4;
   cursor: default;
+}
+
+.section-more-btn {
+  width: 100%;
+  background: none;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 8px;
+  font-size: 0.8rem;
+  color: #6b7280;
+  cursor: pointer;
+  text-align: center;
+  font-family: inherit;
+}
+
+.section-more-btn:hover {
+  background: #f9fafb;
+  color: #1f2937;
 }
 
 .minor-group {

@@ -1,5 +1,6 @@
 const PAGE_SIZE = 10;
 const CLASSIFY_BATCH_SIZE = 10;
+const HOME_SECTION_PREVIEW = 5;
 
 const state = {
   categories: [],
@@ -259,12 +260,17 @@ function renderMainSection(cat) {
     empty.textContent = "표시할 이메일이 없습니다.";
     section.appendChild(empty);
   } else {
-    const { pageItems, page, totalPages } = paginate(items, cat.id);
-    for (const item of pageItems) {
+    const preview = items.slice(0, HOME_SECTION_PREVIEW);
+    for (const item of preview) {
       section.appendChild(renderCard(item));
     }
-    const pager = renderPager(cat.id, totalPages, page);
-    if (pager) section.appendChild(pager);
+    if (items.length > HOME_SECTION_PREVIEW) {
+      const more = document.createElement("button");
+      more.className = "section-more-btn";
+      more.textContent = `전체 ${items.length}건 보기 →`;
+      more.onclick = () => selectCategory(cat.id);
+      section.appendChild(more);
+    }
   }
   return section;
 }
