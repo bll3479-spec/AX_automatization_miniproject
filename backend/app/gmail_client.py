@@ -113,27 +113,44 @@ def fetch_recent_emails(max_results: int | None = 20) -> list[EmailMessage]:
 
 
 def _fetch_messages_batch(service, message_ids: list[str]) -> list[EmailMessage]:
-    """메일 ID별로 .get()을 순차 호출하는 대신, batch 요청으로 묶어 호출 수를 줄인다."""
+    """메일 ID별로 .get()을 순차 호출하는 대신, batch 요청으로 묶어 호출 수를 줄인다.
+
+    일시적인 Gmail API 오류(rate limit 등)로 일부 메시지가 누락될 수 있어,
+    apply_labels_batch와 동일하게 실패한 ID만 모아 지수 백오프로 재시도한다."""
     raw_by_id: dict[str, dict] = {}
+    remaining = list(message_ids)
+    delay = 0.5
 
-    def _callback(request_id, response, exception):
-        if exception is None:
-            raw_by_id[request_id] = response
+    for attempt in range(4):
+        if not remaining:
+            break
+        if attempt > 0:
+            time.sleep(delay)
+            delay = min(delay * 2, 4.0)
 
-    for chunk_start in range(0, len(message_ids), _BATCH_SIZE):
-        chunk = message_ids[chunk_start : chunk_start + _BATCH_SIZE]
-        batch = service.new_batch_http_request(callback=_callback)
-        for message_id in chunk:
-            batch.add(
-                service.users().messages().get(
-                    userId="me",
-                    id=message_id,
-                    format="metadata",
-                    metadataHeaders=["From", "Subject", "Date", "List-Unsubscribe"],
-                ),
-                request_id=message_id,
-            )
-        batch.execute()
+        found: dict[str, dict] = {}
+
+        def _cb(request_id, response, exception, _bucket=found):
+            if exception is None:
+                _bucket[request_id] = response
+
+        for chunk_start in range(0, len(remaining), _BATCH_SIZE):
+            chunk = remaining[chunk_start : chunk_start + _BATCH_SIZE]
+            batch = service.new_batch_http_request(callback=_cb)
+            for mid in chunk:
+                batch.add(
+                    service.users().messages().get(
+                        userId="me",
+                        id=mid,
+                        format="metadata",
+                        metadataHeaders=["From", "Subject", "Date", "List-Unsubscribe"],
+                    ),
+                    request_id=mid,
+                )
+            batch.execute()
+
+        raw_by_id.update(found)
+        remaining = [mid for mid in remaining if mid not in raw_by_id]
 
     return [_parse_message(raw_by_id[mid]) for mid in message_ids if mid in raw_by_id]
 
