@@ -168,7 +168,7 @@ select, button {
 
 
 .email-list {
-  padding: 0 28px 40px;
+  padding: 16px 28px 40px;
   display: grid;
   gap: 12px;
 }
