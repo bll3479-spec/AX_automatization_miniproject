@@ -68,7 +68,7 @@ _This file contains critical rules and patterns that AI agents must follow when 
 
 ### 프론트엔드(vanilla JS) 규칙
 - 셀렉트/드롭다운 등 새 컨트롤을 추가하면 `change` 이벤트 리스너를 반드시 같이 등록해야 한다 — 빠뜨리면 화면에 컨트롤은 보이지만 동작하지 않는다(과거 실제 사고 이력: `DEBUGGING_LOG.md` 참조).
-- `source-select`(데모/Gmail 전환)는 의도적으로 자동 재조회를 하지 않는다 — Gmail 라벨 적용 체크박스 상태와 얽혀 있어, 자동 재조회를 붙이면 의도치 않게 실제 Gmail 라벨이 적용될 수 있다.
+- `source-select`(데모/Gmail 전환) 변경 시 `runClassify()`가 자동 호출된다 — `apply_labels` 체크박스가 unchecked 상태일 때만 호출되므로 의도치 않은 Gmail 라벨 적용은 발생하지 않는다.
 
 ### Development Workflow 규칙
 - 현재 작업 브랜치는 `git branch`로 직접 확인할 것(브랜치명을 문서에 하드코딩하지 않음).

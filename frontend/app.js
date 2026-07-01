@@ -313,12 +313,17 @@ function renderMinorCategoryGroup(cat) {
   header.innerHTML = `<span style="color:${cat.color}">${escapeHtml(cat.label_ko)}</span><span class="minor-group-count">${items.length}건</span>`;
   group.appendChild(header);
 
-  const { pageItems, page, totalPages } = paginate(items, cat.id);
-  for (const item of pageItems) {
+  const preview = items.slice(0, HOME_SECTION_PREVIEW);
+  for (const item of preview) {
     group.appendChild(renderMinorRow(item));
   }
-  const pager = renderPager(cat.id, totalPages, page);
-  if (pager) group.appendChild(pager);
+  if (items.length > HOME_SECTION_PREVIEW) {
+    const more = document.createElement("button");
+    more.className = "section-more-btn";
+    more.textContent = `전체 ${items.length}건 보기 →`;
+    more.onclick = () => selectCategory(cat.id);
+    group.appendChild(more);
+  }
   return group;
 }
 
@@ -491,10 +496,12 @@ async function classifyRawInBatches(rawEmails) {
   return classified;
 }
 
-// GET /api/emails/raw를 1회만 호출해 state.rawEmails에 저장한 뒤 배치 분류한다 (AD-3).
+// GET /api/emails/raw를 1회만 호출해 배치 분류한다 (AD-3).
+// rawEmails를 반환값으로 돌려줘 호출자가 _classifyRun 검사 이후에 state에 기록하게 한다.
 async function runClassifyBatched(source, limit) {
-  state.rawEmails = await fetchRawEmails(source, limit);
-  return classifyRawInBatches(state.rawEmails);
+  const rawEmails = await fetchRawEmails(source, limit);
+  const classified = await classifyRawInBatches(rawEmails);
+  return { rawEmails, classified };
 }
 
 // 드롭다운을 빠르게 바꾸면 runClassify()가 중복 실행된다. 세대 카운터로
@@ -518,6 +525,7 @@ async function runClassify() {
     let classified;
     let counts;
     let labelApplyFailures = 0;
+    let pendingRawEmails;
 
     if (source === "gmail" && applyLabelsCheckbox.checked) {
       // Gmail 라벨 적용은 기존 단건 /api/classify 경로를 그대로 사용한다 (하위 호환 유지).
@@ -535,16 +543,19 @@ async function runClassify() {
       classified = data.emails;
       counts = data.counts;
       labelApplyFailures = data.label_apply_failures;
-      // 라벨 적용 경로도 Epic 4 "적용" 액션이 재사용할 수 있도록 state.rawEmails를 채워둔다 (AD-3 컨벤션).
-      state.rawEmails = classified.map((item) => item.email);
+      // 라벨 적용 경로도 pendingRawEmails를 통해 guard 이후 갱신한다 (배치 경로와 동일 패턴).
+      pendingRawEmails = classified.map((item) => item.email);
     } else {
-      classified = await runClassifyBatched(source, limit);
+      const result = await runClassifyBatched(source, limit);
+      classified = result.classified;
       counts = countByCategory(classified);
+      pendingRawEmails = result.rawEmails;
     }
 
     // 이 요청이 시작된 이후 더 새로운 요청이 생겼으면 결과를 버린다.
     if (run !== _classifyRun) return;
 
+    if (pendingRawEmails !== undefined) state.rawEmails = pendingRawEmails;
     state.emails = classified;
     state.counts = counts;
     state.pageByKey = {};
