@@ -64,7 +64,6 @@ const limitSelect = document.getElementById("limit-select");
 const applyLabelsCheckbox = document.getElementById("apply-labels-checkbox");
 const refreshBtn = document.getElementById("refresh-btn");
 const summaryEl = document.getElementById("summary");
-const tabsEl = document.getElementById("category-tabs");
 const homeSectionsEl = document.getElementById("home-sections");
 const listEl = document.getElementById("email-list");
 const errorBanner = document.getElementById("error-banner");
@@ -125,7 +124,6 @@ async function loadCategories() {
 
 function selectCategory(categoryId) {
   state.activeCategory = categoryId;
-  renderTabs();
   renderSummary();
   render();
 }
@@ -153,22 +151,6 @@ function renderSummary() {
   }
 }
 
-function renderTabs() {
-  tabsEl.innerHTML = "";
-  const allTab = document.createElement("button");
-  allTab.className = "tab" + (state.activeCategory === null ? " active" : "");
-  allTab.textContent = "전체";
-  allTab.onclick = () => selectCategory(null);
-  tabsEl.appendChild(allTab);
-
-  for (const cat of state.categories) {
-    const tab = document.createElement("button");
-    tab.className = "tab" + (state.activeCategory === cat.id ? " active" : "");
-    tab.textContent = cat.label_ko;
-    tab.onclick = () => selectCategory(cat.id);
-    tabsEl.appendChild(tab);
-  }
-}
 
 function render() {
   if (state.activeCategory === null) {
@@ -545,7 +527,6 @@ applyOverridesBtn.addEventListener("click", applyPendingOverrides);
 (async function init() {
   applyLabelsCheckbox.disabled = true;
   await loadCategories();
-  renderTabs();
   renderSummary();
   await runClassify();
 })();

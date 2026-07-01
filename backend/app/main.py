@@ -82,7 +82,7 @@ def get_emails(source: str = "demo", category: Category | None = None, limit: in
 
 
 @app.get("/api/emails/raw", response_model=list[EmailMessage])
-def get_emails_raw(source: str = "demo", limit: int | None = 20) -> list[EmailMessage]:
+def get_emails_raw(source: str = "demo", limit: int | None = None) -> list[EmailMessage]:
     return _fetch_source_emails(source, limit)
 
 
