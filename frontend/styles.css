@@ -200,6 +200,7 @@ select, button {
   gap: 10px;
   /* 💡 방법 2-②: clamp를 활용하여 화면 높이에 따라 최소 160px ~ 최대 280px로 유동적 변경 */
   min-height: clamp(160px, 25vh, 280px);
+  max-width: 400px;
 }
 
 .main-section-header {
