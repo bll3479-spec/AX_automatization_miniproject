@@ -527,16 +527,20 @@ select, button {
 .bulk-clear-btn {
   background: transparent;
   color: #9ca3af;
-  border: none;
-  font-size: 1.1rem;
+  border: 1px solid #4b5563;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  font-weight: 600;
   cursor: pointer;
-  padding: 2px 4px;
-  line-height: 1;
+  padding: 5px 12px;
   font-family: inherit;
+  white-space: nowrap;
 }
 
 .bulk-clear-btn:hover {
+  background: #374151;
   color: white;
+  border-color: #6b7280;
 }
 
 .toast {
