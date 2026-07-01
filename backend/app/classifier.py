@@ -41,7 +41,7 @@ WORK_SENDERS = [
 ]
 
 ANNOUNCEMENT_KEYWORDS = [
-    "입사지원", "신입", "공고",
+    "입사지원", "신입",
 ]
 ANNOUNCEMENT_SENDERS = ["사람인", "saramin", "인크루트", "incruit"]
 
