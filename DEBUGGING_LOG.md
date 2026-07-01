@@ -272,6 +272,55 @@ def get_emails_raw(source: str = "demo", limit: int | None = None) -> list[Email
 
 ---
 
+## 2026-07-01 — 전체 조회 건수보다 500건 조회 건수가 더 많이 표시됨
+
+### 증상
+
+Gmail 소스에서 조회 건수를 "전체"와 "500건"으로 각각 전환해보니,
+총 메일이 312건임에도 "전체" 조회 결과가 "500건" 조회 결과보다 적게 나왔다.
+
+### 원인 분석
+
+`backend/app/gmail_client.py`의 `fetch_recent_emails()`는 Gmail `messages.list` API를
+`nextPageToken` 기반으로 페이지네이션한다. Gmail API는 동일한 메일함을 여러 페이지로
+나눠 반환할 때, **페이지 커서 드리프트(cursor drift)** 로 인해 동일한 메시지 ID가
+두 페이지 모두에 포함되는 경우가 있다.
+
+중복 ID가 `message_stubs` 리스트에 그대로 누적되면, 이후 `_fetch_messages_batch()`에서
+같은 `message_id`를 `request_id`로 삼아 `batch.add()`를 두 번 호출한다. 이때 일부
+구현에서 동일 `request_id` 중복 추가가 묵시적으로 무시되거나 콜백이 호출되지 않아,
+`raw_by_id`에 해당 메시지가 누락된 채 최종 결과에서 빠지게 된다.
+
+- "전체" (cap=2000, 페이지 여러 개): 중복 ID가 발생할 확률 높음 → 메시지 유실 발생
+- "500건" (cap=500, 312건이므로 페이지 1~2개): 중복 가능성 낮음 → 유실 없이 정상 반환
+
+이로 인해 역설적으로 "전체 < 500건" 현상이 발생했다.
+
+### 수정
+
+`fetch_recent_emails()`의 페이지 누적 루프에 `seen_ids` 집합을 추가해,
+각 stub을 `message_stubs`에 추가하기 전 중복 여부를 검사한다.
+
+```python
+seen_ids: set[str] = set()
+for stub in stubs:
+    if stub["id"] not in seen_ids:
+        seen_ids.add(stub["id"])
+        message_stubs.append(stub)
+```
+
+이로써 `message_ids`에 중복이 없어 `batch.add()` 충돌이 제거되고,
+`_fetch_messages_batch()` 결과도 온전하게 반환된다.
+
+### 검증
+
+코드 리뷰 기준으로 중복 ID 경로 제거 확인. 실제 재현은 Gmail 커서 드리프트가
+발생해야 하므로 사용자 환경에서 반복 전환 후 건수 동일 여부로 확인 권장.
+
+(커밋: `8b2a2f5`)
+
+---
+
 ## 2026-07-01 — 소스 전환 후 화면이 갱신되지 않음
 
 ### 증상
