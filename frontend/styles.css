@@ -537,3 +537,28 @@ select, button {
   opacity: 1;
   transform: translateX(-50%) translateY(0);
 }
+
+/* 카테고리 탭 선택 시 화면 전체를 감싸는 색상 띠 */
+body {
+  --cat-color: transparent;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  border: 5px solid var(--cat-color);
+  pointer-events: none;
+  z-index: 9999;
+  transition: border-color 0.2s ease;
+}
+
+body.cat-active .topbar {
+  border-bottom-color: var(--cat-color);
+}
+
+body.cat-active .summary {
+  border-bottom: 3px solid var(--cat-color);
+  margin-bottom: 0;
+  padding-bottom: 12px;
+}
