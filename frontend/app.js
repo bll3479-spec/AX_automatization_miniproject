@@ -516,6 +516,7 @@ sourceSelect.addEventListener("change", () => {
   if (sourceSelect.value !== "gmail") {
     applyLabelsCheckbox.checked = false;
   }
+  runClassify();
 });
 
 limitSelect.addEventListener("change", runClassify);

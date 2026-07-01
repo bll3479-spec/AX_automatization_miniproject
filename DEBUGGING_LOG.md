@@ -210,3 +210,120 @@ limitSelect.addEventListener("change", runClassify);
   상태를 같이 바꿔야 해서, 자동 재조회를 붙이면 의도치 않게 Gmail 라벨이
   적용된 상태로 곧바로 분류가 실행될 수 있음). 소스 전환은 여전히 "분류
   실행" 버튼을 눌러야 한다.
+
+  ※ 이후 2026-07-01 재검토 결과, 소스 전환 시에도 `runClassify()`를 자동
+  호출하는 것이 안전함을 확인하고 수정했다 — 아래 항목 참조.
+
+---
+
+## 2026-07-01 — "전체" 선택 시 Gmail 소스에서 여전히 20건만 반환됨
+
+### 증상
+
+소스를 "실제 Gmail"로 전환하고 조회 건수 드롭다운에서 "전체"를 선택해도
+실제로는 20건만 반환되었다. 건수 칩이 "전체 20건"으로 고정되어 데모 데이터와
+차이가 없는 것처럼 보였다.
+
+### 원인 분석
+
+`GET /api/emails/raw` 엔드포인트의 `limit` 파라미터 기본값이 `20`으로 고정되어
+있었다.
+
+```python
+# 수정 전
+def get_emails_raw(source: str = "demo", limit: int | None = 20) -> list[EmailMessage]:
+```
+
+프론트엔드는 "전체"(`limitSelect.value === "all"`)가 선택됐을 때 `limit` 파라미터를
+아예 보내지 않는다.
+
+```js
+if (limit !== null) params.set("limit", String(limit));
+// → GET /api/emails/raw?source=gmail  (limit 파라미터 없음)
+```
+
+HTTP 쿼리 파라미터가 없으면 FastAPI는 기본값 `20`을 적용하므로, 실질적으로
+`limit=20`과 동일하게 처리되어 Gmail에서 20건만 가져왔다.
+
+### 수정
+
+`backend/app/main.py`의 `get_emails_raw` 기본값을 `20` → `None`으로 변경.
+
+```python
+# 수정 후
+def get_emails_raw(source: str = "demo", limit: int | None = None) -> list[EmailMessage]:
+```
+
+`limit=None`이 `_fetch_source_emails()`로 전달되면:
+- 데모: `DEMO_EMAILS[:None]` → 전체 반환
+- Gmail: `fetch_recent_emails(max_results=None)` → 안전 상한(2000건)까지 전체 반환
+
+### 검증
+
+`curl "http://localhost:8000/api/emails/raw?source=demo"` (limit 파라미터 없음)
+→ 수정 전 20건 고정, 수정 후 전체 14건(데모) 반환 확인.
+
+### 참고
+
+`/api/classify`(POST, 라벨 적용 경로)는 `limit`을 JSON 바디로 받아
+`null`이 명시적으로 전달되므로 이 문제에 해당하지 않는다.
+
+(커밋: `f8a6e06`)
+
+---
+
+## 2026-07-01 — 소스 전환 후 화면이 갱신되지 않음
+
+### 증상
+
+조회 건수 드롭다운이 이미 "전체"로 설정된 상태에서 소스를 "데모 데이터" →
+"실제 Gmail"로 전환해도 화면이 전혀 바뀌지 않았다. 이메일 목록과 건수 칩이
+이전 데모 데이터 그대로 남아 있었다.
+
+### 원인 분석
+
+`sourceSelect`의 `change` 이벤트 핸들러가 `runClassify()`를 호출하지 않았다.
+핸들러는 "Gmail에 라벨 적용" 체크박스 상태만 갱신했다.
+
+```js
+// 수정 전
+sourceSelect.addEventListener("change", () => {
+  applyLabelsCheckbox.disabled = sourceSelect.value !== "gmail";
+  if (sourceSelect.value !== "gmail") {
+    applyLabelsCheckbox.checked = false;
+  }
+  // runClassify() 없음
+});
+```
+
+`limitSelect.change`는 `runClassify()`를 호출하지만, 이미 "전체"가 선택된
+상태에서 소스만 바꾸면 `limitSelect`의 값이 바뀌지 않아 이벤트도 발생하지
+않는다. 결국 소스 전환만으로는 어떤 경로로도 `runClassify()`가 실행되지
+않는 데드존이 있었다.
+
+2026-06-29 항목에서 "소스 전환에 자동 재조회를 붙이면 라벨 적용 체크박스가
+체크된 채로 Gmail 분류가 실행될 수 있다"고 판단했으나, 재검토 결과 해당 우려는
+근거가 없었다 — 체크박스는 소스가 데모일 때 `disabled`(따라서 항상 `checked=false`)
+이므로, Gmail로 전환 직후 자동 호출되는 `runClassify()`에서
+`applyLabelsCheckbox.checked`는 반드시 `false`다. 라벨 자동 적용 위험 없음.
+
+### 수정
+
+`frontend/app.js`의 `sourceSelect` 변경 핸들러에 `runClassify()` 추가.
+
+```js
+// 수정 후
+sourceSelect.addEventListener("change", () => {
+  applyLabelsCheckbox.disabled = sourceSelect.value !== "gmail";
+  if (sourceSelect.value !== "gmail") {
+    applyLabelsCheckbox.checked = false;
+  }
+  runClassify();
+});
+```
+
+### 검증
+
+Playwright로 소스를 "실제 Gmail"로 변경 후:
+- Gmail 미설정 환경: 에러 배너에 `token.json 없음` 안내 즉시 표시 확인.
+- 데모로 복귀: 즉시 재분류 실행, 칩 정상 갱신 확인.
