@@ -77,20 +77,21 @@ _BATCH_SIZE = 100
 
 
 def fetch_recent_emails(max_results: int | None = 20) -> list[EmailMessage]:
-    """max_results=None 이면 받은편지함 전체(안전 상한까지)를 페이지네이션으로 가져온다."""
+    """max_results=None 이면 받은편지함 전체(안전 상한까지)를 페이지네이션으로 가져온다.
+    max_results가 지정되더라도 실제 메일 수가 그보다 적으면 있는 만큼 전부 반환한다."""
     service = _get_service()
-    remaining_cap = _ALL_MAIL_SAFETY_CAP if max_results is None else max_results
+    cap = _ALL_MAIL_SAFETY_CAP if max_results is None else max_results
 
     message_stubs: list[dict] = []
     page_token: str | None = None
-    while remaining_cap > 0:
-        page_size = min(_LIST_PAGE_SIZE, remaining_cap)
+    while len(message_stubs) < cap:
+        # 항상 최대 페이지 크기를 요청해 Gmail이 페이지당 결과를 최대로 반환하도록 한다.
         response = (
             service.users()
             .messages()
             .list(
                 userId="me",
-                maxResults=page_size,
+                maxResults=_LIST_PAGE_SIZE,
                 labelIds=["INBOX"],
                 pageToken=page_token,
             )
@@ -98,12 +99,11 @@ def fetch_recent_emails(max_results: int | None = 20) -> list[EmailMessage]:
         )
         stubs = response.get("messages", [])
         message_stubs.extend(stubs)
-        remaining_cap -= len(stubs)
         page_token = response.get("nextPageToken")
         if not page_token or not stubs:
             break
 
-    return _fetch_messages_batch(service, [stub["id"] for stub in message_stubs])
+    return _fetch_messages_batch(service, [stub["id"] for stub in message_stubs[:cap]])
 
 
 def _fetch_messages_batch(service, message_ids: list[str]) -> list[EmailMessage]:
