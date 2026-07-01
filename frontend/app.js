@@ -226,6 +226,14 @@ async function loadCategories() {
 
 function selectCategory(categoryId) {
   state.activeCategory = categoryId;
+  const cat = state.categories.find((c) => c.id === categoryId);
+  if (cat) {
+    document.body.style.setProperty("--cat-color", cat.color);
+    document.body.classList.add("cat-active");
+  } else {
+    document.body.style.setProperty("--cat-color", "transparent");
+    document.body.classList.remove("cat-active");
+  }
   renderSummary();
   render();
 }
