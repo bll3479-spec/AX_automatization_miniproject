@@ -9,6 +9,7 @@ const state = {
   pageByKey: {},
   rawEmails: [],
   pendingOverrides: {},
+  selectedEmailIds: new Set(),
 };
 
 function getPage(key, totalItems) {
@@ -72,6 +73,42 @@ const progressFillEl = document.getElementById("classify-progress-fill");
 const progressTextEl = document.getElementById("classify-progress-text");
 const applyOverridesBtn = document.getElementById("apply-overrides-btn");
 const pendingBadgeEl = document.getElementById("pending-badge");
+const bulkActionBar = document.getElementById("bulk-action-bar");
+const bulkSelectedCount = document.getElementById("bulk-selected-count");
+const bulkCategorySelect = document.getElementById("bulk-category-select");
+const bulkApplyBtn = document.getElementById("bulk-apply-btn");
+const bulkClearBtn = document.getElementById("bulk-clear-btn");
+
+function toggleSelect(emailId, cardEl) {
+  if (state.selectedEmailIds.has(emailId)) {
+    state.selectedEmailIds.delete(emailId);
+  } else {
+    state.selectedEmailIds.add(emailId);
+  }
+  if (cardEl) cardEl.classList.toggle("selected", state.selectedEmailIds.has(emailId));
+  updateBulkBar();
+}
+
+function clearSelection() {
+  state.selectedEmailIds.clear();
+  updateBulkBar();
+}
+
+function updateBulkBar() {
+  const count = state.selectedEmailIds.size;
+  bulkActionBar.hidden = count === 0;
+  bulkSelectedCount.textContent = `${count}개 선택됨`;
+}
+
+function applyBulkOverride() {
+  const category = bulkCategorySelect.value;
+  for (const emailId of state.selectedEmailIds) {
+    overrideCategory(emailId, category);
+  }
+  state.selectedEmailIds.clear();
+  updateBulkBar();
+  render();
+}
 
 function updatePendingUI() {
   const count = Object.keys(state.pendingOverrides).length;
@@ -120,6 +157,13 @@ function showError(message) {
 async function loadCategories() {
   const res = await fetch("/api/categories");
   state.categories = await res.json();
+  bulkCategorySelect.innerHTML = "";
+  for (const cat of state.categories) {
+    const opt = document.createElement("option");
+    opt.value = cat.id;
+    opt.textContent = cat.label_ko;
+    bulkCategorySelect.appendChild(opt);
+  }
 }
 
 function selectCategory(categoryId) {
@@ -260,7 +304,14 @@ function renderMinorCategoryGroup(cat) {
 function renderMinorRow(item) {
   const meta = categoryMeta(item.result.category);
   const row = document.createElement("div");
-  row.className = "minor-row";
+  row.className = "minor-row" + (state.selectedEmailIds.has(item.email.id) ? " selected" : "");
+
+  const checkbox = document.createElement("input");
+  checkbox.type = "checkbox";
+  checkbox.className = "email-checkbox";
+  checkbox.checked = state.selectedEmailIds.has(item.email.id);
+  checkbox.onchange = () => toggleSelect(item.email.id, row);
+  row.appendChild(checkbox);
 
   const tag = document.createElement("span");
   tag.className = "tag tag-sm";
@@ -317,7 +368,13 @@ function renderCard(item) {
   const meta = categoryMeta(item.result.category);
 
   const card = document.createElement("div");
-  card.className = "email-card";
+  card.className = "email-card" + (state.selectedEmailIds.has(item.email.id) ? " selected" : "");
+
+  const checkbox = document.createElement("input");
+  checkbox.type = "checkbox";
+  checkbox.className = "email-checkbox";
+  checkbox.checked = state.selectedEmailIds.has(item.email.id);
+  checkbox.onchange = () => toggleSelect(item.email.id, card);
 
   const main = document.createElement("div");
   main.className = "email-main";
@@ -355,6 +412,7 @@ function renderCard(item) {
   };
   side.appendChild(overrideSelect);
 
+  card.appendChild(checkbox);
   card.appendChild(main);
   card.appendChild(side);
   return card;
@@ -460,7 +518,9 @@ async function runClassifyBatched(source, limit) {
 async function runClassify() {
   showError(null);
   state.pendingOverrides = {};
+  state.selectedEmailIds.clear();
   updatePendingUI();
+  updateBulkBar();
   refreshBtn.disabled = true;
   refreshBtn.textContent = "분류 중...";
   try {
@@ -524,6 +584,9 @@ limitSelect.addEventListener("change", runClassify);
 refreshBtn.addEventListener("click", runClassify);
 
 applyOverridesBtn.addEventListener("click", applyPendingOverrides);
+
+bulkApplyBtn.addEventListener("click", applyBulkOverride);
+bulkClearBtn.addEventListener("click", () => { clearSelection(); render(); });
 
 (async function init() {
   applyLabelsCheckbox.disabled = true;
