@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>왜 메일이 다 안 읽혔을까?</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: "Apple SD Gothic Neo", "Segoe UI", system-ui, sans-serif; background: #f8f9fa; padding: 32px; color: #1f2937; max-width: 780px; margin: 0 auto; }
+
+  h1 { font-size: 1.4rem; font-weight: 800; margin-bottom: 6px; }
+  .lead { font-size: 0.9rem; color: #6b7280; margin-bottom: 32px; }
+
+  .card { background: white; border-radius: 16px; padding: 28px; margin-bottom: 20px; border: 1px solid #e5e7eb; }
+  .card-num { font-size: 0.7rem; font-weight: 700; background: #1f2937; color: white; border-radius: 999px; width: 22px; height: 22px; display: inline-flex; align-items: center; justify-content: center; margin-right: 8px; }
+  .card-title { font-size: 1.05rem; font-weight: 800; margin-bottom: 16px; }
+  .card-title.red { color: #dc2626; }
+  .card-title.orange { color: #ea580c; }
+  .card-title.blue { color: #2563eb; }
+
+  /* 택배 비유 */
+  .analogy { background: #f9fafb; border-radius: 12px; padding: 16px 20px; margin-bottom: 16px; font-size: 0.85rem; line-height: 1.7; color: #374151; border-left: 4px solid #e5e7eb; }
+  .analogy strong { color: #1f2937; }
+
+  /* 흐름 화살표 */
+  .flow { display: flex; align-items: center; gap: 0; flex-wrap: nowrap; overflow-x: auto; padding: 16px 0; }
+  .box { border-radius: 10px; padding: 12px 16px; text-align: center; font-size: 0.8rem; font-weight: 600; flex-shrink: 0; min-width: 90px; line-height: 1.4; }
+  .box sub { display: block; font-size: 0.65rem; font-weight: 400; color: #6b7280; margin-top: 3px; }
+  .arrow { font-size: 1.4rem; color: #d1d5db; padding: 0 6px; flex-shrink: 0; }
+  .arrow.bad { color: #fca5a5; }
+  .box-gmail { background: #eff6ff; border: 2px solid #93c5fd; color: #1e40af; }
+  .box-ok { background: #f0fdf4; border: 2px solid #86efac; color: #166534; }
+  .box-fail { background: #fef2f2; border: 2px dashed #fca5a5; color: #b91c1c; }
+  .box-lost { background: #fef2f2; border: 2px solid #f87171; color: #b91c1c; opacity: 0.7; }
+
+  /* before/after */
+  .ba { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px; }
+  @media(max-width:500px){ .ba{ grid-template-columns:1fr; } }
+  .ba-box { border-radius: 10px; padding: 14px 16px; font-size: 0.8rem; line-height: 1.8; }
+  .ba-before { background: #fef2f2; border: 1.5px solid #fca5a5; }
+  .ba-after { background: #f0fdf4; border: 1.5px solid #86efac; }
+  .ba-label { font-size: 0.7rem; font-weight: 700; margin-bottom: 6px; }
+  .ba-label.bad { color: #dc2626; }
+  .ba-label.good { color: #16a34a; }
+
+  /* 편지 시각화 */
+  .letters { display: flex; gap: 6px; flex-wrap: wrap; padding: 12px 0; }
+  .letter { width: 36px; height: 36px; border-radius: 8px; border: 2px solid; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; font-weight: 700; flex-shrink: 0; }
+  .l-ok { background: #eff6ff; border-color: #93c5fd; color: #1e40af; }
+  .l-fail { background: #fef2f2; border-color: #f87171; color: #b91c1c; }
+  .l-dup { background: #fff7ed; border-color: #fb923c; color: #c2410c; }
+  .l-gone { background: #f9fafb; border-color: #e5e7eb; color: #d1d5db; text-decoration: line-through; }
+
+  /* 결론 */
+  .result-row { display: flex; gap: 12px; margin-top: 4px; flex-wrap: wrap; }
+  .result-box { flex: 1; min-width: 140px; border-radius: 12px; padding: 18px; text-align: center; }
+  .result-num { font-size: 2.2rem; font-weight: 900; display: block; }
+  .result-label { font-size: 0.75rem; color: #6b7280; margin-top: 4px; line-height: 1.5; }
+  .r-gmail { background: #eff6ff; } .r-gmail .result-num { color: #2563eb; }
+  .r-before { background: #fef2f2; } .r-before .result-num { color: #dc2626; }
+  .r-after { background: #f0fdf4; } .r-after .result-num { color: #16a34a; }
+
+  .fix-tag { display: inline-block; background: #d1fae5; color: #065f46; font-size: 0.7rem; font-weight: 700; padding: 2px 8px; border-radius: 999px; margin-left: 6px; vertical-align: middle; }
+  .divider { border: none; border-top: 1px solid #f3f4f6; margin: 16px 0; }
+</style>
+</head>
+<body>
+
+<h1>왜 "전체" 메일이 다 안 읽혔을까?</h1>
+<p class="lead">실제 받은편지함 312건 → 앱 표시 260~292건. 이유는 두 가지.</p>
+
+<!-- CAUSE 1 -->
+<div class="card">
+  <div class="card-title red"><span class="card-num">1</span>택배 기사가 일부 배달 실패해도 아무 말 안 함</div>
+
+  <div class="analogy">
+    📦 상상해보세요. 택배 기사(Gmail)에게 <strong>"편지 312개 가져다줘"</strong>라고 했는데,<br>
+    배달하다가 일부가 <strong>잠깐 막혀(서버 과부하)</strong> 실패했어요.<br>
+    근데 기사가 <strong>말도 없이 그냥 배달 완료 처리</strong>해버린 거예요.<br>
+    앱도 "실패한 거 있어?" 확인을 <strong>안 했으니</strong> 그냥 넘어간 거고요.
+  </div>
+
+  <div class="flow">
+    <div class="box box-gmail">앱<br><sub>312개 요청</sub></div>
+    <div class="arrow">→</div>
+    <div class="box box-ok">290개<br>성공<sub>✓ 전달됨</sub></div>
+    <div class="arrow bad">→</div>
+    <div class="box box-fail">22개<br>실패<sub>서버 과부하</sub></div>
+    <div class="arrow bad">→</div>
+    <div class="box box-lost">무음<br>유실<sub>재시도 없음</sub></div>
+  </div>
+
+  <div class="ba">
+    <div class="ba-box ba-before">
+      <div class="ba-label bad">수정 전</div>
+      실패해도 확인 안 함<br>
+      재시도 없음<br>
+      → 그냥 없어짐
+    </div>
+    <div class="ba-box ba-after">
+      <div class="ba-label good">수정 후 ✅</div>
+      실패 감지 → 다시 시도<br>
+      최대 4번 재시도<br>
+      → 거의 다 회수됨
+    </div>
+  </div>
+</div>
+
+<!-- CAUSE 2 -->
+<div class="card">
+  <div class="card-title orange"><span class="card-num">2</span>목록을 가져오다가 같은 편지가 두 번 나옴</div>
+
+  <div class="analogy">
+    📋 편지가 많아서 <strong>500개씩 나눠서 목록</strong>을 가져와요.<br>
+    그런데 Gmail 서버가 목록을 넘겨주는 사이에 <strong>순서가 살짝 바뀌면</strong>,<br>
+    같은 편지 <strong>"D"</strong>가 1페이지에도, 2페이지에도 나타날 수 있어요.<br>
+    그걸 그냥 두 번 요청하면 <strong>충돌해서 하나가 사라지는</strong> 현상이 생겨요.
+  </div>
+
+  <div style="padding: 8px 0 4px; font-size: 0.78rem; color: #6b7280; font-weight: 600;">실제로 일어난 일</div>
+  <div style="font-size: 0.75rem; color: #6b7280; margin-bottom: 6px;">1페이지</div>
+  <div class="letters">
+    <div class="letter l-ok">A</div>
+    <div class="letter l-ok">B</div>
+    <div class="letter l-ok">C</div>
+    <div class="letter l-dup">D</div>
+    <div class="letter l-ok">E</div>
+    <div class="letter l-ok">F</div>
+  </div>
+  <div style="font-size: 0.75rem; color: #6b7280; margin: 8px 0 6px;">2페이지 (드리프트 발생)</div>
+  <div class="letters">
+    <div class="letter l-ok">G</div>
+    <div class="letter l-dup">D</div>
+    <div class="letter l-ok">H</div>
+    <div class="letter l-ok">I</div>
+  </div>
+  <div style="font-size: 0.75rem; color: #6b7280; margin: 8px 0 6px;">결과 — D가 충돌해서 날아감</div>
+  <div class="letters">
+    <div class="letter l-ok">A</div>
+    <div class="letter l-ok">B</div>
+    <div class="letter l-ok">C</div>
+    <div class="letter l-gone">D</div>
+    <div class="letter l-ok">E</div>
+    <div class="letter l-ok">F</div>
+    <div class="letter l-ok">G</div>
+    <div class="letter l-ok">H</div>
+    <div class="letter l-ok">I</div>
+  </div>
+
+  <div class="ba" style="margin-top:16px;">
+    <div class="ba-box ba-before">
+      <div class="ba-label bad">수정 전</div>
+      중복 체크 없음<br>
+      같은 ID 두 번 요청<br>
+      → 충돌로 유실
+    </div>
+    <div class="ba-box ba-after">
+      <div class="ba-label good">수정 후 ✅</div>
+      이미 본 ID는 건너뜀<br>
+      중복 없이 고유 목록<br>
+      → 충돌 없음
+    </div>
+  </div>
+</div>
+
+<!-- CAUSE 3 -->
+<div class="card">
+  <div class="card-title blue"><span class="card-num">3</span>Gmail 숫자 vs 앱 숫자 — 애초에 세는 방식이 달라요</div>
+
+  <div class="analogy">
+    💬 카카오톡 채팅방을 생각해보세요.<br>
+    <strong>Gmail UI의 "312"</strong> = 대화방(스레드) 개수<br>
+    <strong>앱의 카운트</strong> = 대화방 안의 개별 메시지 개수<br><br>
+    한 대화방에 메시지가 3개면 → Gmail은 "1", 앱은 "3"으로 세요.<br>
+    이건 <strong>버그가 아니라 보는 관점의 차이</strong>라 수정해도 숫자가 같아지지 않아요.
+  </div>
+
+  <div style="background:#f9fafb;border-radius:10px;padding:14px 16px;margin-top:4px;">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;">
+      <div style="background:#dbeafe;border-radius:8px;padding:8px 14px;font-weight:700;font-size:0.8rem;color:#1e40af;min-width:80px;text-align:center;">대화방 하나</div>
+      <div style="font-size:0.8rem;color:#374151;">메시지 3개 포함</div>
+      <div style="margin-left:auto;font-size:0.78rem;">
+        <span style="color:#2563eb;font-weight:700;">Gmail: 1</span>
+        <span style="color:#9ca3af;margin:0 6px;">·</span>
+        <span style="color:#ea580c;font-weight:700;">앱: 3</span>
+      </div>
+    </div>
+    <div style="font-size:0.75rem;color:#9ca3af;">→ 수정으로 해결할 수 없는 구조적 차이</div>
+  </div>
+</div>
+
+<!-- 결론 -->
+<div class="card" style="background:#1f2937;border-color:#374151;">
+  <div style="color:white;font-size:1rem;font-weight:800;margin-bottom:16px;">결론</div>
+  <div class="result-row">
+    <div class="result-box r-gmail">
+      <span class="result-num">312</span>
+      <div class="result-label">Gmail UI 숫자<br>(스레드 기준)</div>
+    </div>
+    <div class="result-box r-before">
+      <span class="result-num">260</span>
+      <div class="result-label">수정 전 앱<br>(누락 많았음)</div>
+    </div>
+    <div class="result-box r-after">
+      <span class="result-num">≈300+</span>
+      <div class="result-label">수정 후 앱<br>(누락 크게 줄어듦)</div>
+    </div>
+  </div>
+  <p style="color:#9ca3af;font-size:0.78rem;margin-top:16px;line-height:1.6;">
+    1번·2번 수정으로 실제 INBOX 메시지 수에 훨씬 근접해졌어요.<br>
+    Gmail과 앱 숫자가 정확히 일치하지 않는 건 3번 때문이고, 이건 정상이에요.
+  </p>
+</div>
+
+</body>
+</html>

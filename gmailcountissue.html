@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>Gmail 전체 조회 누락 원인 분석</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: "Apple SD Gothic Neo", "Segoe UI", system-ui, sans-serif; background: #f0f2f5; padding: 32px; color: #1f2937; }
+  h1 { font-size: 1.3rem; font-weight: 800; margin-bottom: 8px; }
+  .subtitle { font-size: 0.85rem; color: #6b7280; margin-bottom: 32px; }
+
+  .section { background: white; border-radius: 16px; padding: 24px 28px; margin-bottom: 24px; border: 1px solid #e5e7eb; }
+  .section-title { font-size: 1rem; font-weight: 700; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+  .badge { font-size: 0.7rem; font-weight: 700; padding: 2px 8px; border-radius: 999px; }
+  .badge-bug { background: #fee2e2; color: #b91c1c; }
+  .badge-structural { background: #e0e7ff; color: #3730a3; }
+  .badge-fixed { background: #d1fae5; color: #065f46; }
+
+  /* Flow diagram */
+  .flow { display: flex; align-items: stretch; gap: 0; overflow-x: auto; padding-bottom: 4px; }
+  .flow-node {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    padding: 12px 16px; border-radius: 10px; font-size: 0.78rem; font-weight: 600;
+    min-width: 120px; text-align: center; line-height: 1.4; flex-shrink: 0;
+  }
+  .flow-node .node-label { font-size: 0.65rem; font-weight: 400; margin-top: 4px; color: rgba(0,0,0,0.5); }
+  .flow-arrow { display: flex; align-items: center; color: #9ca3af; font-size: 1.2rem; padding: 0 4px; flex-shrink: 0; }
+  .node-api { background: #eff6ff; border: 2px solid #93c5fd; color: #1e40af; }
+  .node-batch { background: #fef3c7; border: 2px solid #fcd34d; color: #92400e; }
+  .node-state { background: #f0fdf4; border: 2px solid #6ee7b7; color: #065f46; }
+  .node-error { background: #fff1f2; border: 2px dashed #fca5a5; color: #9f1239; }
+  .node-lost { background: #fef2f2; border: 2px solid #f87171; color: #b91c1c; opacity: 0.8; }
+
+  /* Problem detail */
+  .problem-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px; }
+  @media (max-width: 600px) { .problem-grid { grid-template-columns: 1fr; } }
+
+  .code-block {
+    background: #1e1e2e; color: #cdd6f4; border-radius: 10px; padding: 14px 16px;
+    font-family: 'SF Mono', 'Fira Code', monospace; font-size: 0.75rem; line-height: 1.7;
+    overflow-x: auto;
+  }
+  .code-del { color: #f38ba8; text-decoration: line-through; opacity: 0.7; }
+  .code-add { color: #a6e3a1; }
+  .code-comment { color: #6c7086; }
+  .code-key { color: #89b4fa; }
+  .code-str { color: #a6e3a1; }
+  .code-num { color: #fab387; }
+
+  /* Count comparison */
+  .count-compare { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 12px; }
+  .count-box { flex: 1; min-width: 140px; border-radius: 10px; padding: 16px; text-align: center; }
+  .count-box .count-num { font-size: 2rem; font-weight: 800; display: block; line-height: 1; margin-bottom: 6px; }
+  .count-box .count-desc { font-size: 0.75rem; color: #6b7280; line-height: 1.4; }
+  .count-gmail { background: #eff6ff; }
+  .count-gmail .count-num { color: #2563eb; }
+  .count-app { background: #fff7ed; }
+  .count-app .count-num { color: #ea580c; }
+  .count-fixed { background: #f0fdf4; }
+  .count-fixed .count-num { color: #16a34a; }
+
+  /* Sequence diagram */
+  .seq { display: grid; grid-template-columns: 90px 1fr 90px; gap: 0; align-items: start; margin-top: 8px; }
+  .seq-actor {
+    background: #f3f4f6; border: 2px solid #d1d5db; border-radius: 8px;
+    font-size: 0.72rem; font-weight: 700; text-align: center; padding: 8px 4px;
+    position: sticky; top: 0;
+  }
+  .seq-messages { display: flex; flex-direction: column; gap: 0; padding: 0 8px; }
+  .seq-msg {
+    display: flex; align-items: center; gap: 6px; padding: 6px 0;
+    border-bottom: 1px dashed #e5e7eb; font-size: 0.72rem;
+  }
+  .seq-msg:last-child { border-bottom: none; }
+  .seq-arrow-r { color: #2563eb; }
+  .seq-arrow-l { color: #059669; }
+  .seq-arrow-err { color: #dc2626; }
+  .seq-label { flex: 1; }
+  .seq-fail { color: #dc2626; font-weight: 600; }
+  .seq-ok { color: #059669; }
+  .seq-note { background: #fef9c3; border-radius: 4px; padding: 2px 6px; font-size: 0.68rem; color: #854d0e; margin-left: auto; }
+
+  /* Page drift viz */
+  .page-grid { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
+  .page-row { display: flex; align-items: center; gap: 10px; }
+  .page-label { font-size: 0.72rem; font-weight: 700; color: #6b7280; width: 60px; flex-shrink: 0; }
+  .page-items { display: flex; gap: 4px; flex-wrap: wrap; }
+  .mail-chip {
+    font-size: 0.65rem; font-weight: 600; padding: 3px 8px; border-radius: 6px;
+    border: 1.5px solid;
+  }
+  .mail-normal { background: #eff6ff; border-color: #93c5fd; color: #1e40af; }
+  .mail-dup { background: #fff7ed; border-color: #fb923c; color: #c2410c; }
+  .mail-lost { background: #fef2f2; border-color: #f87171; color: #b91c1c; text-decoration: line-through; opacity: 0.6; }
+  .mail-ok { background: #f0fdf4; border-color: #4ade80; color: #166534; }
+  .legend { display: flex; gap: 12px; margin-top: 8px; flex-wrap: wrap; }
+  .legend-item { display: flex; align-items: center; gap: 5px; font-size: 0.68rem; color: #6b7280; }
+  .legend-dot { width: 10px; height: 10px; border-radius: 3px; border: 1.5px solid; }
+
+  .divider { height: 1px; background: #f3f4f6; margin: 16px 0; }
+
+  .fix-banner {
+    background: #f0fdf4; border: 1.5px solid #6ee7b7; border-radius: 10px;
+    padding: 12px 16px; margin-top: 12px; font-size: 0.8rem; color: #065f46;
+    display: flex; align-items: flex-start; gap: 10px;
+  }
+  .fix-icon { font-size: 1.1rem; flex-shrink: 0; }
+
+  .summary-bar {
+    display: flex; gap: 12px; margin-top: 28px; flex-wrap: wrap;
+  }
+  .summary-item {
+    flex: 1; min-width: 160px; background: white; border-radius: 12px;
+    padding: 16px; border: 1px solid #e5e7eb; display: flex; flex-direction: column; gap: 6px;
+  }
+  .summary-num { font-size: 1.8rem; font-weight: 800; }
+  .summary-label { font-size: 0.75rem; color: #6b7280; line-height: 1.4; }
+  .c-red { color: #dc2626; }
+  .c-orange { color: #ea580c; }
+  .c-green { color: #16a34a; }
+  .c-blue { color: #2563eb; }
+</style>
+</head>
+<body>
+
+<h1>Gmail "전체" 조회 — 메일 개수 불일치 원인 분석</h1>
+<p class="subtitle">버그 수정 전 실제 312건 메일함 → 앱 표시 260~292건 | 원인 3계층</p>
+
+<!-- OVERVIEW FLOW -->
+<div class="section">
+  <div class="section-title">전체 흐름에서 누락이 발생하는 지점</div>
+  <div class="flow">
+    <div class="flow-node node-api">Gmail API<br>list()<br><span class="node-label">메시지 ID 목록</span></div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-node node-error" style="border-color:#fcd34d;background:#fef9c3;color:#92400e;">중복 ID 발생<br><span class="node-label" style="color:#92400e;">⚠ 페이지 드리프트</span></div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-node node-batch">Batch get()<br>100건 묶음<br><span class="node-label">_fetch_messages_batch</span></div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-node node-error">일부 429/503<br><span class="node-label">⚠ 레이트리밋</span></div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-node node-lost">결과 무음 유실<br><span class="node-label">재시도 없음</span></div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-node node-state">state.rawEmails<br><span class="node-label">260~292건만 저장</span></div>
+  </div>
+</div>
+
+<!-- CAUSE 1 -->
+<div class="section">
+  <div class="section-title">
+    <span>원인 1 — Batch API 응답 실패 무음 유실</span>
+    <span class="badge badge-bug">주원인</span>
+    <span class="badge badge-fixed">수정 완료</span>
+  </div>
+
+  <div class="problem-grid">
+    <div>
+      <p style="font-size:0.78rem;color:#6b7280;margin-bottom:8px;">수정 전 — exception 무시, 재시도 없음</p>
+      <div class="code-block">
+<span class="code-comment"># 배치 콜백 — exception 체크 없음</span>
+<span class="code-key">def</span> _cb(request_id, response, exception):
+    <span class="code-del">if response is not None:</span>
+        raw_by_id[request_id] = response
+<span class="code-comment"># 429/503 응답 → response=None → 조용히 skip</span>
+<span class="code-comment"># 재시도 로직 없음 → 영구 유실</span>
+      </div>
+    </div>
+    <div>
+      <p style="font-size:0.78rem;color:#6b7280;margin-bottom:8px;">수정 후 — 실패 ID 추려 지수 백오프 재시도</p>
+      <div class="code-block">
+<span class="code-comment"># 실패한 ID만 모아 재시도</span>
+<span class="code-key">def</span> _cb(request_id, response, exception,
+        _bucket=found):
+    <span class="code-add">if exception is None:</span>
+        _bucket[request_id] = response
+
+remaining = [mid <span class="code-key">for</span> mid <span class="code-key">in</span> remaining
+             <span class="code-key">if</span> mid <span class="code-key">not in</span> raw_by_id]
+<span class="code-comment"># 최대 4회 재시도: 0s→0.5s→1s→2s</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- sequence diagram -->
+  <div style="margin-top:16px;">
+    <p style="font-size:0.78rem;font-weight:600;margin-bottom:8px;color:#374151;">수정 전 실행 흐름 (312건 조회 시도 → 260건 도달)</p>
+    <div style="background:#fafafa;border-radius:10px;padding:14px 16px;font-size:0.72rem;">
+      <div style="display:flex;gap:24px;margin-bottom:10px;">
+        <div style="text-align:center;font-weight:700;min-width:80px;">앱</div>
+        <div style="flex:1;text-align:center;font-weight:700;">Gmail Batch API</div>
+        <div style="text-align:center;font-weight:700;min-width:80px;">결과</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:6px;">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span style="min-width:80px;text-align:right;color:#2563eb;">──100건 요청──▶</span>
+          <span style="flex:1;text-align:center;background:#e0f2fe;border-radius:4px;padding:2px 8px;">batch.execute()</span>
+          <span style="min-width:80px;color:#16a34a;">◀ 98건 OK</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span style="min-width:80px;text-align:right;color:#dc2626;font-size:0.65rem;">2건 실패</span>
+          <span style="flex:1;text-align:center;background:#fee2e2;border-radius:4px;padding:2px 8px;color:#b91c1c;">exception != None (429 Rate Limit)</span>
+          <span style="min-width:80px;color:#dc2626;font-weight:700;">× 조용히 drop</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span style="min-width:80px;text-align:right;color:#2563eb;">──100건 요청──▶</span>
+          <span style="flex:1;text-align:center;background:#e0f2fe;border-radius:4px;padding:2px 8px;">batch.execute()</span>
+          <span style="min-width:80px;color:#16a34a;">◀ 95건 OK</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span style="min-width:80px;text-align:right;color:#dc2626;font-size:0.65rem;">5건 실패</span>
+          <span style="flex:1;text-align:center;background:#fee2e2;border-radius:4px;padding:2px 8px;color:#b91c1c;">exception != None (503 Unavailable)</span>
+          <span style="min-width:80px;color:#dc2626;font-weight:700;">× 조용히 drop</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;padding-top:4px;border-top:1px solid #e5e7eb;margin-top:4px;">
+          <span style="min-width:80px;font-size:0.68rem;color:#6b7280;">재시도 없음</span>
+          <span style="flex:1;text-align:center;font-size:0.68rem;color:#6b7280;">312건 요청 → 유실 누적</span>
+          <span style="min-width:80px;color:#dc2626;font-weight:700;">≈260건 저장</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="fix-banner">
+    <span class="fix-icon">✅</span>
+    <div>
+      <strong>수정:</strong> `_bucket=found` 기본 인자로 클로저 캡처 문제 해결 + 실패 ID만 모아 최대 4회 재시도 (0s → 0.5s → 1s → 2s 지수 백오프). 전체 시도 후에도 남은 ID는 조용히 제외 (부분 실패 허용, 전체 500 에러 방지).
+    </div>
+  </div>
+</div>
+
+<!-- CAUSE 2 -->
+<div class="section">
+  <div class="section-title">
+    <span>원인 2 — Gmail 페이지 커서 드리프트로 중복 ID 유실</span>
+    <span class="badge badge-bug">보조 원인</span>
+    <span class="badge badge-fixed">수정 완료</span>
+  </div>
+
+  <p style="font-size:0.78rem;color:#6b7280;margin-bottom:12px;">500건 단위 페이지네이션 중, Gmail 서버가 인덱스를 재배치하면 동일 메일이 두 페이지에 걸쳐 중복 반환될 수 있음.</p>
+
+  <div class="page-grid">
+    <div class="page-row">
+      <span class="page-label">페이지 1</span>
+      <div class="page-items">
+        <span class="mail-normal mail-chip">A</span>
+        <span class="mail-normal mail-chip">B</span>
+        <span class="mail-normal mail-chip">C</span>
+        <span class="mail-dup mail-chip">D ⚠</span>
+        <span class="mail-normal mail-chip">E</span>
+        <span style="font-size:0.65rem;color:#9ca3af;align-self:center;">... 500건</span>
+      </div>
+    </div>
+    <div class="page-row">
+      <span class="page-label">페이지 2<br><span style="font-size:0.6rem;color:#f97316;">(드리프트)</span></span>
+      <div class="page-items">
+        <span class="mail-normal mail-chip">F</span>
+        <span class="mail-dup mail-chip">D ⚠</span>
+        <span class="mail-normal mail-chip">G</span>
+        <span style="font-size:0.65rem;color:#9ca3af;align-self:center;">... 중복 포함</span>
+      </div>
+    </div>
+    <div class="page-row">
+      <span class="page-label">Batch 요청</span>
+      <div class="page-items">
+        <span class="mail-normal mail-chip">A</span>
+        <span class="mail-normal mail-chip">B</span>
+        <span class="mail-normal mail-chip">C</span>
+        <span class="mail-dup mail-chip">D (1번)</span>
+        <span class="mail-dup mail-chip">D (2번)</span>
+        <span style="font-size:0.65rem;color:#f97316;align-self:center;">← 동일 request_id 충돌!</span>
+      </div>
+    </div>
+    <div class="page-row">
+      <span class="page-label">결과</span>
+      <div class="page-items">
+        <span class="mail-ok mail-chip">A ✓</span>
+        <span class="mail-ok mail-chip">B ✓</span>
+        <span class="mail-ok mail-chip">C ✓</span>
+        <span class="mail-lost mail-chip">D 유실</span>
+        <span class="mail-ok mail-chip">E ✓</span>
+        <span class="mail-ok mail-chip">F ✓</span>
+        <span class="mail-ok mail-chip">G ✓</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="legend">
+    <div class="legend-item"><div class="legend-dot" style="background:#eff6ff;border-color:#93c5fd;"></div>정상 메일</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#fff7ed;border-color:#fb923c;"></div>드리프트로 중복된 메일</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#fef2f2;border-color:#f87171;"></div>batch 충돌로 유실</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#f0fdf4;border-color:#4ade80;"></div>정상 수신</div>
+  </div>
+
+  <div class="fix-banner" style="margin-top:12px;">
+    <span class="fix-icon">✅</span>
+    <div>
+      <strong>수정:</strong> `seen_ids: set[str]` 집합으로 각 페이지에서 받은 ID를 추적, 이미 본 ID는 `message_stubs`에 추가하지 않음 → 중복 없는 고유 ID 목록으로 Batch 요청.
+    </div>
+  </div>
+</div>
+
+<!-- CAUSE 3 -->
+<div class="section">
+  <div class="section-title">
+    <span>원인 3 — Gmail UI vs 앱의 카운팅 기준 차이</span>
+    <span class="badge badge-structural">구조적 차이 (버그 아님)</span>
+  </div>
+
+  <div class="count-compare">
+    <div class="count-box count-gmail">
+      <span class="count-num">312</span>
+      <span class="count-desc">Gmail UI 숫자<br>스레드(대화) 단위<br>같은 주제 3통 = 1</span>
+    </div>
+    <div style="display:flex;align-items:center;font-size:1.5rem;color:#d1d5db;">↔</div>
+    <div class="count-box count-app">
+      <span class="count-num">✱</span>
+      <span class="count-desc">앱 카운트<br>INBOX 라벨 기준<br>메시지(개별 메일) 단위<br>같은 주제 3통 = 3</span>
+    </div>
+  </div>
+
+  <div style="margin-top:16px;background:#f9fafb;border-radius:10px;padding:14px 16px;">
+    <p style="font-size:0.78rem;font-weight:600;margin-bottom:10px;color:#374151;">실제 예시</p>
+    <div style="display:flex;flex-direction:column;gap:8px;font-size:0.75rem;">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <div style="background:#dbeafe;border-radius:6px;padding:6px 12px;min-width:80px;text-align:center;font-weight:700;color:#1e40af;">스레드 A</div>
+        <div style="display:flex;gap:6px;">
+          <div style="background:#eff6ff;border:1px solid #93c5fd;border-radius:6px;padding:4px 10px;color:#1e40af;font-size:0.7rem;">메일 1 (INBOX)</div>
+          <div style="background:#eff6ff;border:1px solid #93c5fd;border-radius:6px;padding:4px 10px;color:#1e40af;font-size:0.7rem;">메일 2 (INBOX)</div>
+          <div style="background:#f3f4f6;border:1px solid #d1d5db;border-radius:6px;padding:4px 10px;color:#6b7280;font-size:0.7rem;">메일 3 (Archive)</div>
+        </div>
+        <div style="margin-left:auto;font-size:0.7rem;color:#6b7280;">Gmail: 1 · 앱: 2</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:12px;">
+        <div style="background:#dbeafe;border-radius:6px;padding:6px 12px;min-width:80px;text-align:center;font-weight:700;color:#1e40af;">스레드 B</div>
+        <div style="display:flex;gap:6px;">
+          <div style="background:#eff6ff;border:1px solid #93c5fd;border-radius:6px;padding:4px 10px;color:#1e40af;font-size:0.7rem;">메일 1 (INBOX)</div>
+        </div>
+        <div style="margin-left:auto;font-size:0.7rem;color:#6b7280;">Gmail: 1 · 앱: 1</div>
+      </div>
+    </div>
+    <p style="font-size:0.72rem;color:#6b7280;margin-top:10px;">이 차이는 수정해도 없어지지 않으며, 없애려면 스레드 단위 카운팅으로 설계를 바꿔야 함.</p>
+  </div>
+</div>
+
+<!-- SUMMARY -->
+<div class="summary-bar">
+  <div class="summary-item">
+    <span class="summary-num c-red">1순위</span>
+    <span class="summary-label">Batch silent failure<br>재시도 없이 유실<br>→ 수정으로 대부분 해소</span>
+  </div>
+  <div class="summary-item">
+    <span class="summary-num c-orange">2순위</span>
+    <span class="summary-label">페이지 드리프트<br>중복 ID → batch 충돌<br>→ seen_ids로 수정</span>
+  </div>
+  <div class="summary-item">
+    <span class="summary-num c-blue">구조</span>
+    <span class="summary-label">스레드 vs 메시지<br>카운팅 기준 차이<br>→ 버그 아님, 설계 차이</span>
+  </div>
+  <div class="summary-item">
+    <span class="summary-num c-green">결과</span>
+    <span class="summary-label">수정 후 INBOX<br>실제 메시지 수에<br>훨씬 근접하게 표시</span>
+  </div>
+</div>
+
+</body>
+</html>
