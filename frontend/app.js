@@ -101,17 +101,58 @@ function toggleSelect(emailId, cardEl) {
   }
   if (cardEl) cardEl.classList.toggle("selected", state.selectedEmailIds.has(emailId));
   updateBulkBar();
+  updateSectionHeaders();
 }
 
 function clearSelection() {
   state.selectedEmailIds.clear();
   updateBulkBar();
+  updateSectionHeaders();
+}
+
+function deselectCategory(catId) {
+  const items = state.emails.filter((item) => item.result.category === catId);
+  for (const item of items) {
+    if (!state.selectedEmailIds.has(item.email.id)) continue;
+    state.selectedEmailIds.delete(item.email.id);
+    const cardEl = homeSectionsEl.querySelector(`[data-email-id="${item.email.id}"]`);
+    if (cardEl) {
+      cardEl.classList.remove("selected");
+      const cb = cardEl.querySelector(".email-checkbox");
+      if (cb) cb.checked = false;
+    }
+  }
+  updateBulkBar();
+  updateSectionHeaders();
+}
+
+function updateSectionHeaders() {
+  const sections = homeSectionsEl.querySelectorAll("[data-cat-id]");
+  for (const section of sections) {
+    const catId = section.dataset.catId;
+    const items = state.emails.filter((item) => item.result.category === catId);
+    const selCount = items.filter((item) => state.selectedEmailIds.has(item.email.id)).length;
+    const badge = section.querySelector(".section-sel-badge");
+    const btn = section.querySelector(".section-deselect-btn");
+    if (badge) { badge.textContent = `${selCount}개 선택`; badge.hidden = selCount === 0; }
+    if (btn) btn.hidden = selCount === 0;
+  }
 }
 
 function updateBulkBar() {
   const count = state.selectedEmailIds.size;
   bulkActionBar.hidden = count === 0;
-  bulkSelectedCount.textContent = `${count}개 선택됨`;
+  if (count === 0) return;
+
+  const parts = [];
+  for (const cat of state.categories) {
+    const n = state.emails.filter(
+      (item) => item.result.category === cat.id && state.selectedEmailIds.has(item.email.id)
+    ).length;
+    if (n > 0) parts.push(`${cat.label_ko} ${n}건`);
+  }
+  const summary = parts.length > 1 ? `${parts.join(" · ")}  |  총 ${count}개 선택` : `총 ${count}개 선택`;
+  bulkSelectedCount.textContent = summary;
 }
 
 function applyBulkOverride() {
@@ -242,17 +283,45 @@ function renderHome() {
 
 function renderMainSection(cat) {
   const items = state.emails.filter((item) => item.result.category === cat.id);
+  const selCount = items.filter((item) => state.selectedEmailIds.has(item.email.id)).length;
 
   const section = document.createElement("section");
   section.className = "main-section-card";
+  section.dataset.catId = cat.id;
 
   const header = document.createElement("div");
   header.className = "main-section-header";
   header.style.borderColor = cat.color;
-  header.innerHTML = `
-    <span class="main-section-title" style="color:${cat.color}">${escapeHtml(cat.label_ko)}</span>
-    <span class="main-section-count">${items.length}건</span>
-  `;
+
+  const title = document.createElement("span");
+  title.className = "main-section-title";
+  title.style.color = cat.color;
+  title.textContent = cat.label_ko;
+
+  const right = document.createElement("div");
+  right.className = "main-section-header-right";
+
+  const countSpan = document.createElement("span");
+  countSpan.className = "main-section-count";
+  countSpan.textContent = `${items.length}건`;
+
+  const selBadge = document.createElement("span");
+  selBadge.className = "section-sel-badge";
+  selBadge.textContent = `${selCount}개 선택`;
+  selBadge.hidden = selCount === 0;
+
+  const deselectBtn = document.createElement("button");
+  deselectBtn.type = "button";
+  deselectBtn.className = "section-deselect-btn";
+  deselectBtn.textContent = "선택 해제";
+  deselectBtn.hidden = selCount === 0;
+  deselectBtn.onclick = (e) => { e.stopPropagation(); deselectCategory(cat.id); };
+
+  right.appendChild(countSpan);
+  right.appendChild(selBadge);
+  right.appendChild(deselectBtn);
+  header.appendChild(title);
+  header.appendChild(right);
   section.appendChild(header);
 
   if (items.length === 0) {
@@ -376,6 +445,7 @@ function renderCard(item) {
 
   const card = document.createElement("div");
   card.className = "email-card" + (state.selectedEmailIds.has(item.email.id) ? " selected" : "");
+  card.dataset.emailId = item.email.id;
 
   const checkbox = document.createElement("input");
   checkbox.type = "checkbox";
