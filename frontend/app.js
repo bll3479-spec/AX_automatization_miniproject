@@ -1,4 +1,4 @@
-const PAGE_SIZE = 20;
+const PAGE_SIZE = 10;
 const CLASSIFY_BATCH_SIZE = 10;
 
 const state = {
