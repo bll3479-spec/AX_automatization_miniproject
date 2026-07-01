@@ -69,6 +69,7 @@ const summaryEl = document.getElementById("summary");
 const homeSectionsEl = document.getElementById("home-sections");
 const listEl = document.getElementById("email-list");
 const errorBanner = document.getElementById("error-banner");
+const countInfoBanner = document.getElementById("count-info-banner");
 const progressEl = document.getElementById("classify-progress");
 const progressFillEl = document.getElementById("classify-progress-fill");
 const progressTextEl = document.getElementById("classify-progress-text");
@@ -561,6 +562,7 @@ async function runClassify() {
     state.pageByKey = {};
     renderSummary();
     render();
+    updateCountInfoBanner();
     if (labelApplyFailures) {
       showError(
         `분류는 완료됐지만 ${labelApplyFailures}건은 Gmail 라벨 적용에 실패했습니다. "분류 실행"을 다시 눌러 재시도해보세요.`
@@ -577,10 +579,26 @@ async function runClassify() {
   }
 }
 
+function updateCountInfoBanner() {
+  const isGmail = sourceSelect.value === "gmail";
+  if (!isGmail || state.emails.length === 0) {
+    countInfoBanner.hidden = true;
+    return;
+  }
+  const appCount = state.emails.length;
+  countInfoBanner.hidden = false;
+  countInfoBanner.innerHTML =
+    `<span class="info-icon">ℹ️</span>` +
+    `자봐는 <span class="info-nums">${appCount}건</span>의 개별 메일을 읽었습니다. ` +
+    `Gmail 받은편지함 숫자(대화 기준)와 다를 수 있어요 — ` +
+    `하나의 대화에 메일이 여러 개면 자봐는 각각 따로 셉니다.`;
+}
+
 sourceSelect.addEventListener("change", () => {
   applyLabelsCheckbox.disabled = sourceSelect.value !== "gmail";
   if (sourceSelect.value !== "gmail") {
     applyLabelsCheckbox.checked = false;
+    countInfoBanner.hidden = true;
   }
   runClassify();
 });

@@ -84,6 +84,27 @@ select, button {
   font-weight: 700;
 }
 
+.count-info-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 28px;
+  background: #eff6ff;
+  border-bottom: 1px solid #dbeafe;
+  font-size: 0.78rem;
+  color: #1e40af;
+  line-height: 1.5;
+}
+
+.count-info-banner .info-icon {
+  font-size: 0.9rem;
+  flex-shrink: 0;
+}
+
+.count-info-banner .info-nums {
+  font-weight: 700;
+}
+
 .classify-progress {
   display: flex;
   align-items: center;
