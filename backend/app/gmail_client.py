@@ -82,6 +82,7 @@ def fetch_recent_emails(max_results: int | None = 20) -> list[EmailMessage]:
     service = _get_service()
     cap = _ALL_MAIL_SAFETY_CAP if max_results is None else max_results
 
+    seen_ids: set[str] = set()
     message_stubs: list[dict] = []
     page_token: str | None = None
     while len(message_stubs) < cap:
@@ -98,7 +99,12 @@ def fetch_recent_emails(max_results: int | None = 20) -> list[EmailMessage]:
             .execute()
         )
         stubs = response.get("messages", [])
-        message_stubs.extend(stubs)
+        # 페이지 커서 드리프트로 동일 ID가 여러 페이지에 걸쳐 중복 반환될 수 있다.
+        # 중복 ID가 batch.add()에 두 번 들어가면 일부 메시지가 유실되므로 제거한다.
+        for stub in stubs:
+            if stub["id"] not in seen_ids:
+                seen_ids.add(stub["id"])
+                message_stubs.append(stub)
         page_token = response.get("nextPageToken")
         if not page_token or not stubs:
             break
