@@ -279,7 +279,22 @@ function renderHome() {
   }
   homeSectionsEl.appendChild(sectionsWrap);
   homeSectionsEl.appendChild(renderMinorSummary(minorCats));
+  equalizeCardHeights();
 }
+
+function equalizeCardHeights() {
+  const cards = [...homeSectionsEl.querySelectorAll(".main-section-card")];
+  if (cards.length < 2) return;
+  cards.forEach((c) => { c.style.minHeight = ""; });
+  const maxH = Math.max(...cards.map((c) => c.offsetHeight));
+  cards.forEach((c) => { c.style.minHeight = maxH + "px"; });
+}
+
+let _resizeTimer;
+window.addEventListener("resize", () => {
+  clearTimeout(_resizeTimer);
+  _resizeTimer = setTimeout(equalizeCardHeights, 120);
+});
 
 function renderMainSection(cat) {
   const items = state.emails.filter((item) => item.result.category === cat.id);
