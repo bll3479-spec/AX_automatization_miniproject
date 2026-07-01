@@ -76,6 +76,9 @@ const progressTextEl = document.getElementById("classify-progress-text");
 const applyOverridesBtn = document.getElementById("apply-overrides-btn");
 const pendingBadgeEl = document.getElementById("pending-badge");
 const toastEl = document.getElementById("toast");
+const confirmModal = document.getElementById("confirm-modal");
+const confirmYesBtn = document.getElementById("confirm-yes-btn");
+const confirmNoBtn = document.getElementById("confirm-no-btn");
 const bulkActionBar = document.getElementById("bulk-action-bar");
 const bulkSelectedCount = document.getElementById("bulk-selected-count");
 const bulkCategorySelect = document.getElementById("bulk-category-select");
@@ -700,9 +703,37 @@ limitSelect.addEventListener("change", runClassify);
 
 refreshBtn.addEventListener("click", runClassify);
 
-applyOverridesBtn.addEventListener("click", applyPendingOverrides);
+let _confirmCallback = null;
 
-bulkApplyBtn.addEventListener("click", applyBulkOverride);
+function showConfirm(message, onYes) {
+  document.querySelector(".confirm-message").textContent = message;
+  _confirmCallback = onYes;
+  confirmModal.hidden = false;
+}
+
+confirmYesBtn.addEventListener("click", () => {
+  confirmModal.hidden = true;
+  if (_confirmCallback) { _confirmCallback(); _confirmCallback = null; }
+});
+
+confirmNoBtn.addEventListener("click", () => {
+  confirmModal.hidden = true;
+  _confirmCallback = null;
+});
+
+applyOverridesBtn.addEventListener("click", () => {
+  showConfirm("라벨을 적용하시겠습니까?", applyPendingOverrides);
+});
+
+bulkApplyBtn.addEventListener("click", () => {
+  const category = bulkCategorySelect.value;
+  const count = state.selectedEmailIds.size;
+  const catMeta = categoryMeta(category);
+  showConfirm(
+    `${count}개 메일을 '${catMeta.label_ko}'(으)로 변경하시겠습니까?`,
+    applyBulkOverride
+  );
+});
 bulkClearBtn.addEventListener("click", () => { clearSelection(); render(); });
 
 (async function init() {

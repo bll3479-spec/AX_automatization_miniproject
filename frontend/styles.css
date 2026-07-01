@@ -566,3 +566,71 @@ select, button {
   transform: translateX(-50%) translateY(0);
 }
 
+/* 확인 모달 */
+.confirm-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 300;
+}
+
+.confirm-modal[hidden] {
+  display: none;
+}
+
+.confirm-dialog {
+  background: white;
+  border-radius: 16px;
+  padding: 28px 32px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  min-width: 260px;
+}
+
+.confirm-message {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #1f2937;
+  margin: 0;
+  text-align: center;
+}
+
+.confirm-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.confirm-btn {
+  font-size: 0.9rem;
+  font-weight: 600;
+  padding: 9px 28px;
+  border-radius: 10px;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.confirm-btn-yes {
+  background: #2563eb;
+  color: white;
+}
+
+.confirm-btn-yes:hover {
+  background: #1d4ed8;
+}
+
+.confirm-btn-no {
+  background: #f3f4f6;
+  color: #374151;
+}
+
+.confirm-btn-no:hover {
+  background: #e5e7eb;
+}
+
