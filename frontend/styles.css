@@ -246,16 +246,6 @@ select, button {
   color: #4b5563;
 }
 
-.tag-sm {
-  padding: 2px 8px;
-  font-size: 0.65rem;
-}
-
-.override-select-sm {
-  font-size: 0.7rem;
-  padding: 2px 4px;
-}
-
 .email-card {
   background: white;
   border-radius: 12px;
@@ -301,24 +291,10 @@ select, button {
   gap: 8px;
 }
 
-.tag {
-  border-radius: 999px;
-  padding: 4px 12px;
-  font-size: 0.75rem;
-  font-weight: 700;
-  color: white;
-  white-space: nowrap;
-}
-
 .matched-rule {
   font-size: 0.7rem;
   color: #9ca3af;
   text-align: right;
-}
-
-.override-select {
-  font-size: 0.75rem;
-  padding: 4px 6px;
 }
 
 .empty-state {

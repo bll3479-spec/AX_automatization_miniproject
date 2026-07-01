@@ -328,30 +328,10 @@ function renderMinorRow(item) {
   checkbox.onchange = () => toggleSelect(item.email.id, row);
   row.appendChild(checkbox);
 
-  const tag = document.createElement("span");
-  tag.className = "tag tag-sm";
-  tag.style.background = meta.color;
-  tag.textContent = meta.label_ko;
-  row.appendChild(tag);
-
   const text = document.createElement("span");
   text.className = "minor-row-text";
   text.innerHTML = `<strong>${escapeHtml(item.email.subject)}</strong> · ${escapeHtml(item.email.sender)}`;
   row.appendChild(text);
-
-  const overrideSelect = document.createElement("select");
-  overrideSelect.className = "override-select override-select-sm";
-  for (const cat of state.categories) {
-    const opt = document.createElement("option");
-    opt.value = cat.id;
-    opt.textContent = cat.label_ko;
-    opt.selected = cat.id === item.result.category;
-    overrideSelect.appendChild(opt);
-  }
-  overrideSelect.onchange = async (e) => {
-    await overrideCategory(item.email.id, e.target.value);
-  };
-  row.appendChild(overrideSelect);
 
   return row;
 }
@@ -402,30 +382,10 @@ function renderCard(item) {
   const side = document.createElement("div");
   side.className = "email-side";
 
-  const tag = document.createElement("span");
-  tag.className = "tag";
-  tag.style.background = meta.color;
-  tag.textContent = meta.label_ko;
-  side.appendChild(tag);
-
   const rule = document.createElement("span");
   rule.className = "matched-rule";
   rule.textContent = `근거: ${item.result.matched_rule} (${Math.round(item.result.confidence * 100)}%)`;
   side.appendChild(rule);
-
-  const overrideSelect = document.createElement("select");
-  overrideSelect.className = "override-select";
-  for (const cat of state.categories) {
-    const opt = document.createElement("option");
-    opt.value = cat.id;
-    opt.textContent = cat.label_ko;
-    opt.selected = cat.id === item.result.category;
-    overrideSelect.appendChild(opt);
-  }
-  overrideSelect.onchange = async (e) => {
-    await overrideCategory(item.email.id, e.target.value);
-  };
-  side.appendChild(overrideSelect);
 
   card.appendChild(checkbox);
   card.appendChild(main);
