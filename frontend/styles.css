@@ -499,6 +499,24 @@ select, button {
   font-size: 0.85rem;
 }
 
+.drag-handle {
+  color: #9ca3af;
+  font-size: 1.2rem;
+  cursor: grab;
+  user-select: none;
+  padding: 0 2px;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.bulk-action-bar.is-dragging .drag-handle {
+  cursor: grabbing;
+}
+
+.bulk-action-bar.is-dragging {
+  user-select: none;
+}
+
 .bulk-action-bar select {
   font-size: 0.85rem;
   padding: 6px 10px;

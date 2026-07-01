@@ -736,6 +736,66 @@ bulkApplyBtn.addEventListener("click", () => {
 });
 bulkClearBtn.addEventListener("click", () => { clearSelection(); render(); });
 
+function initDraggableBulkBar() {
+  const el = bulkActionBar;
+  const handle = el.querySelector(".drag-handle");
+  if (!handle) return;
+
+  let dragging = false;
+  let startX, startY, startLeft, startTop;
+
+  function startDrag(clientX, clientY) {
+    const rect = el.getBoundingClientRect();
+    el.style.left = rect.left + "px";
+    el.style.top = rect.top + "px";
+    el.style.bottom = "auto";
+    el.style.transform = "none";
+    startX = clientX;
+    startY = clientY;
+    startLeft = rect.left;
+    startTop = rect.top;
+    dragging = true;
+    el.classList.add("is-dragging");
+  }
+
+  function moveDrag(clientX, clientY) {
+    if (!dragging) return;
+    const dx = clientX - startX;
+    const dy = clientY - startY;
+    el.style.left = Math.max(0, Math.min(window.innerWidth - el.offsetWidth, startLeft + dx)) + "px";
+    el.style.top = Math.max(0, Math.min(window.innerHeight - el.offsetHeight, startTop + dy)) + "px";
+  }
+
+  function endDrag() {
+    dragging = false;
+    el.classList.remove("is-dragging");
+  }
+
+  handle.addEventListener("mousedown", (e) => {
+    e.preventDefault();
+    startDrag(e.clientX, e.clientY);
+  });
+
+  document.addEventListener("mousemove", (e) => moveDrag(e.clientX, e.clientY));
+  document.addEventListener("mouseup", endDrag);
+
+  handle.addEventListener("touchstart", (e) => {
+    const t = e.touches[0];
+    startDrag(t.clientX, t.clientY);
+  }, { passive: true });
+
+  document.addEventListener("touchmove", (e) => {
+    if (!dragging) return;
+    e.preventDefault();
+    const t = e.touches[0];
+    moveDrag(t.clientX, t.clientY);
+  }, { passive: false });
+
+  document.addEventListener("touchend", endDrag);
+}
+
+initDraggableBulkBar();
+
 (async function init() {
   applyLabelsCheckbox.disabled = true;
   await loadCategories();
