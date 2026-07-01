@@ -73,11 +73,23 @@ const progressFillEl = document.getElementById("classify-progress-fill");
 const progressTextEl = document.getElementById("classify-progress-text");
 const applyOverridesBtn = document.getElementById("apply-overrides-btn");
 const pendingBadgeEl = document.getElementById("pending-badge");
+const toastEl = document.getElementById("toast");
 const bulkActionBar = document.getElementById("bulk-action-bar");
 const bulkSelectedCount = document.getElementById("bulk-selected-count");
 const bulkCategorySelect = document.getElementById("bulk-category-select");
 const bulkApplyBtn = document.getElementById("bulk-apply-btn");
 const bulkClearBtn = document.getElementById("bulk-clear-btn");
+
+function showToast(message) {
+  toastEl.textContent = message;
+  toastEl.hidden = false;
+  toastEl.classList.add("toast-show");
+}
+
+function hideToast() {
+  toastEl.classList.remove("toast-show");
+  toastEl.hidden = true;
+}
 
 function toggleSelect(emailId, cardEl) {
   if (state.selectedEmailIds.has(emailId)) {
@@ -102,12 +114,15 @@ function updateBulkBar() {
 
 function applyBulkOverride() {
   const category = bulkCategorySelect.value;
+  const count = state.selectedEmailIds.size;
+  const catMeta = categoryMeta(category);
   for (const emailId of state.selectedEmailIds) {
     overrideCategory(emailId, category);
   }
   state.selectedEmailIds.clear();
   updateBulkBar();
   render();
+  showToast(`${count}개 메일을 '${catMeta.label_ko}'(으)로 변경 예정 — '적용'을 눌러 반영하세요.`);
 }
 
 function updatePendingUI() {
@@ -459,6 +474,7 @@ async function applyPendingOverrides() {
     state.pendingOverrides = {};
     renderSummary();
     render();
+    hideToast();
   } catch (err) {
     showError(err.message);
   } finally {
@@ -517,6 +533,7 @@ async function runClassifyBatched(source, limit) {
 
 async function runClassify() {
   showError(null);
+  hideToast();
   state.pendingOverrides = {};
   state.selectedEmailIds.clear();
   updatePendingUI();
