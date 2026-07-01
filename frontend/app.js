@@ -491,7 +491,13 @@ async function runClassifyBatched(source, limit) {
   return classifyRawInBatches(state.rawEmails);
 }
 
+// 드롭다운을 빠르게 바꾸면 runClassify()가 중복 실행된다. 세대 카운터로
+// 더 오래된 요청의 결과를 무시해 경쟁 조건을 방지한다.
+let _classifyRun = 0;
+
 async function runClassify() {
+  const run = ++_classifyRun;
+
   showError(null);
   hideToast();
   state.pendingOverrides = {};
@@ -530,6 +536,9 @@ async function runClassify() {
       counts = countByCategory(classified);
     }
 
+    // 이 요청이 시작된 이후 더 새로운 요청이 생겼으면 결과를 버린다.
+    if (run !== _classifyRun) return;
+
     state.emails = classified;
     state.counts = counts;
     state.pageByKey = {};
@@ -541,10 +550,13 @@ async function runClassify() {
       );
     }
   } catch (err) {
+    if (run !== _classifyRun) return;
     showError(err.message);
   } finally {
-    refreshBtn.disabled = false;
-    refreshBtn.textContent = "분류 실행";
+    if (run === _classifyRun) {
+      refreshBtn.disabled = false;
+      refreshBtn.textContent = "분류 실행";
+    }
   }
 }
 
